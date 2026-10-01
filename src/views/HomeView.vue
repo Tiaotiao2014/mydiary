@@ -1,11 +1,39 @@
 <template>
   <div class="home">
-    <div v-if="loading" class="loading">加载中...</div>
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          v-model="searchQuery"
+          class="search-input"
+          placeholder="搜索日记（标题、正文、标签）..."
+        />
+        <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''">×</button>
+      </div>
 
-    <div v-else-if="diaries.length === 0" class="empty-state">
-      <p>还没有日记，点击右上角"新建"开始第一篇吧。</p>
+      <!-- 标签筛选 -->
+      <div v-if="tags.length > 0" class="tag-filters">
+        <button
+          v-for="tag in tags"
+          :key="tag"
+          :class="['tag-filter', { active: activeTag === tag }]"
+          @click="activeTag = activeTag === tag ? null : tag"
+        >
+          {{ tag }}
+        </button>
+      </div>
     </div>
 
+    <!-- 加载 / 空状态 -->
+    <div v-if="loading" class="loading">加载中...</div>
+    <div v-else-if="filteredDiaries.length === 0" class="empty-state">
+      <p v-if="diaries.length === 0">还没有日记，点击右上角"新建"开始第一篇吧。</p>
+      <p v-else-if="searchQuery || activeTag">没有匹配的结果</p>
+      <p v-else>还没有日记</p>
+    </div>
+
+    <!-- 日记列表 -->
     <div v-else class="diary-list">
       <div v-for="group in groupedDiaries" :key="group.date" class="date-group">
         <h3 class="date-label">{{ formatDate(group.date) }}</h3>
@@ -18,7 +46,9 @@
           <div class="diary-title">{{ d.title || '无标题' }}</div>
           <div class="diary-preview">{{ getPreview(d) }}</div>
           <div class="diary-tags">
-            <span v-for="tag in d.tags" :key="tag" class="tag">{{ tag }}</span>
+            <span v-for="tag in d.tags" :key="tag" class="tag" @click.stop="setTag(tag)">
+              {{ tag }}
+            </span>
           </div>
         </div>
       </div>
@@ -27,24 +57,35 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
+import { useSearchStore } from '@/stores/search'
 
 const store = useDiaryStore()
+const search = useSearchStore()
 const router = useRouter()
 
-const loading = computed(() => store.loading)
-const diaries = computed(() => store.diaries)
+const searchQuery = ref('')
+const activeTag = ref(null)
 
 onMounted(async () => {
   await store.initLibrary()
   await store.fetchDiaries()
 })
 
+const loading = computed(() => store.loading)
+const diaries = computed(() => store.diaries)
+
+const tags = computed(() => search.allTags(diaries.value))
+
+const filteredDiaries = computed(() => {
+  return search.filterDiaries(diaries.value, searchQuery.value, activeTag.value)
+})
+
 const groupedDiaries = computed(() => {
   const map = {}
-  for (const d of diaries.value) {
+  for (const d of filteredDiaries.value) {
     if (!map[d.date]) map[d.date] = []
     map[d.date].push(d)
   }
@@ -60,7 +101,6 @@ function formatDate(dateStr) {
 }
 
 function getPreview(d) {
-  // 简单提取 Tiptap JSON 里的纯文本
   if (!d.content?.content) return ''
   const texts = []
   function walk(node) {
@@ -74,10 +114,43 @@ function getPreview(d) {
 function openDiary(d) {
   router.push(`/edit/${d.id}?date=${d.date}`)
 }
+
+function setTag(tag) {
+  activeTag.value = tag
+}
 </script>
 
 <style scoped>
+.search-bar { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+
+.search-input-wrap {
+  position: relative; display: flex; align-items: center;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0 12px;
+}
+.search-input-wrap:focus-within { border-color: var(--accent); }
+.search-icon { opacity: 0.4; font-size: 14px; }
+.search-input {
+  flex: 1; padding: 10px 8px; border: none; background: transparent;
+  color: var(--fg); font-size: 14px; outline: none;
+}
+.search-input::placeholder { color: var(--fg); opacity: 0.4; }
+.clear-btn {
+  background: transparent; border: none; color: var(--fg);
+  cursor: pointer; font-size: 16px; opacity: 0.5;
+}
+
+.tag-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag-filter {
+  background: transparent; border: 1px solid var(--border); color: var(--fg);
+  font-size: 12px; padding: 4px 12px; border-radius: 14px; cursor: pointer;
+  transition: all 0.15s;
+}
+.tag-filter:hover { border-color: var(--accent); color: var(--accent); }
+.tag-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 .loading, .empty-state { text-align: center; padding: 60px 0; opacity: 0.5; }
+
 .diary-list { display: flex; flex-direction: column; gap: 28px; }
 .date-group { }
 .date-label { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
@@ -92,6 +165,7 @@ function openDiary(d) {
 .diary-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag {
   background: var(--accent); color: #fff;
-  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; cursor: pointer;
 }
+.tag:hover { opacity: 0.8; }
 </style>
