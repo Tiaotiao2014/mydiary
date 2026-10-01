@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -62,7 +62,6 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Mathematics } from '@tiptap/extension-mathematics'
 
-// KaTeX CSS
 import 'katex/dist/katex.min.css'
 
 const props = defineProps({
@@ -88,15 +87,28 @@ const editor = useEditor({
       katexOptions: { throwOnError: false },
     }),
   ],
-  content: props.content ? props.content : '',
-
+  content: props.content || '',
   onUpdate: ({ editor: e }) => {
     emit('update', e.getJSON())
     emit('update:content', e.getJSON())
   },
 })
 
-// 图片上传
+// content prop 变化时同步到编辑器
+watch(() => props.content, (newContent) => {
+  if (editor.value && newContent) {
+    editor.value.commands.setContent(newContent, false)
+    nextTick(() => editor.value?.commands.focus('start'))
+  }
+})
+
+// 挂载后聚焦编辑器
+onMounted(() => {
+  nextTick(() => {
+    editor.value?.commands.focus('start')
+  })
+})
+
 async function insertImage() {
   fileInput.value?.click()
 }
@@ -114,12 +126,10 @@ async function onImageSelected(e) {
   e.target.value = ''
 }
 
-// 表格
 function insertTable() {
   editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
 }
 
-// 公式
 function insertMath() {
   const latex = prompt('请输入 LaTeX 公式：', 'E = mc^2')
   if (latex) {
@@ -148,6 +158,7 @@ function insertMath() {
 .editor-content { min-height: 400px; }
 .editor-content :deep(.ProseMirror) {
   padding: 20px; min-height: 400px; outline: none; font-size: 15px; line-height: 1.7;
+  cursor: text;
 }
 .editor-content :deep(.ProseMirror h1) { font-size: 1.5em; margin: 0.5em 0; }
 .editor-content :deep(.ProseMirror h2) { font-size: 1.25em; margin: 0.5em 0; }

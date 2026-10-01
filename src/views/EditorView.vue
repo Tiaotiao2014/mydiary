@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
 import DiaryEditor from '@/components/DiaryEditor.vue'
@@ -42,6 +42,19 @@ const editorReady = ref(false)
 const saving = ref(false)
 let saveTimer = null
 
+async function loadDiaryData(id) {
+  editorReady.value = false
+  const date = route.query.date || new Date().toISOString().slice(0, 10)
+  const diary = await store.loadDiary(date, id)
+  if (diary) {
+    title.value = diary.title
+    tagList.value = [...diary.tags]
+    editorContent.value = diary.content
+    store.currentDiary = diary
+  }
+  editorReady.value = true
+}
+
 onMounted(async () => {
   const id = route.params.id
   if (!id) return
@@ -51,23 +64,25 @@ onMounted(async () => {
     title.value = diary.title
     tagList.value = [...diary.tags]
     editorContent.value = diary.content
-    editorReady.value = true
-    router.replace(`/edit/${diary.id}?date=${diary.date}`)
     store.currentDiary = diary
-  } else {
-    const date = route.query.date || new Date().toISOString().slice(0, 10)
-    const diary = await store.loadDiary(date, id)
-    if (diary) {
-      title.value = diary.title
-      tagList.value = [...diary.tags]
-      editorContent.value = diary.content
-    }
+    // 用 replaceState 避免路由重建，直接改 URL
+    history.replaceState(null, '', `#/edit/${diary.id}?date=${diary.date}`)
     editorReady.value = true
+  } else {
+    await loadDiaryData(id)
+  }
+})
+
+// 监听路由变化（router.replace 触发的重建场景）
+watch(() => route.params.id, (newId) => {
+  if (newId && newId !== 'new') {
+    loadDiaryData(newId)
   }
 })
 
 function onEditorUpdate() { scheduleAutoSave() }
 function onMetaChange() { scheduleAutoSave() }
+
 function scheduleAutoSave() {
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 2000)
@@ -164,6 +179,11 @@ onBeforeUnmount(() => clearTimeout(saveTimer))
   padding: 8px 14px; cursor: pointer; font-size: 13px;
 }
 .btn-ghost:hover { opacity: 1; }
+.btn-primary {
+  background: var(--accent); color: #fff; border: none;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.btn-primary:disabled { opacity: 0.5; }
 .tags-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tag-chip {
   background: var(--accent); color: #fff; font-size: 12px;
