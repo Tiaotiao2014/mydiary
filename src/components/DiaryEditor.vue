@@ -88,9 +88,8 @@ const editor = useEditor({
       katexOptions: { throwOnError: false },
     }),
   ],
-  content: props.content
-    ? (typeof props.content === 'string' ? props.content : JSON.stringify(props.content))
-    : '',
+  content: props.content ? props.content : '',
+
   onUpdate: ({ editor: e }) => {
     emit('update', e.getJSON())
     emit('update:content', e.getJSON())
