@@ -60,7 +60,7 @@ import Image from '@tiptap/extension-image'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
-import { Mathematics } from '@tiptap/extension-mathematics'
+// import { Mathematics } from '@tiptap/extension-mathematics'
 
 import 'katex/dist/katex.min.css'
 
@@ -83,9 +83,9 @@ const editor = useEditor({
     }),
     TableRow,
     TableHeader,
-    Mathematics.configure({
-      katexOptions: { throwOnError: false },
-    }),
+//     Mathematics.configure({
+//       katexOptions: { throwOnError: false },
+//     }),
   ],
   content: props.content || '',
   onUpdate: ({ editor: e }) => {

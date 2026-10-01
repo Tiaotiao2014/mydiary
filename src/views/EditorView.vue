@@ -4,7 +4,6 @@
       <input v-model="title" class="title-input" placeholder="日记标题..." @change="onMetaChange" />
       <div class="header-actions">
         <button class="btn btn-ghost" @click="goBack">← 返回</button>
-        <button class="btn btn-ghost" @click="exportAsHTML">⬇ HTML</button>
         <button class="btn btn-ghost" @click="deleteDiary">🗑 删除</button>
         <button class="btn btn-primary" :disabled="saving" @click="save">
           {{ saving ? '保存中...' : '保存' }}
@@ -14,16 +13,22 @@
 
     <div class="tags-row">
       <span v-for="tag in tagList" :key="tag" class="tag-chip" @click="removeTag(tag)">{{ tag }} ×</span>
-      <input v-if="addingTag" v-model="tagInput" class="tag-input" @blur="confirmTag" @keyup.enter="confirmTag" ref="tagInputRef" />
+      <input
+        v-if="addingTag"
+        v-model="tagInput"
+        class="tag-input"
+        @blur="confirmTag"
+        @keyup.enter="confirmTag"
+      />
       <button v-else class="tag-add" @click="addingTag = true">＋ 标签</button>
     </div>
 
-    <DiaryEditor v-if="editorReady" v-model:content="editorContent" @update="onEditorUpdate" />
+    <DiaryEditor v-if="editorReady" :content="editorContent" @update="onEditorUpdate" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
 import DiaryEditor from '@/components/DiaryEditor.vue'
@@ -36,52 +41,47 @@ const title = ref('')
 const tagList = ref([])
 const addingTag = ref(false)
 const tagInput = ref('')
-const tagInputRef = ref(null)
 const editorContent = ref(null)
 const editorReady = ref(false)
 const saving = ref(false)
 let saveTimer = null
-
-async function loadDiaryData(id) {
-  editorReady.value = false
-  const date = route.query.date || new Date().toISOString().slice(0, 10)
-  const diary = await store.loadDiary(date, id)
-  if (diary) {
-    title.value = diary.title
-    tagList.value = [...diary.tags]
-    editorContent.value = diary.content
-    store.currentDiary = diary
-  }
-  editorReady.value = true
-}
+let diaryId = null
 
 onMounted(async () => {
   const id = route.params.id
   if (!id) return
+
   if (id === 'new') {
     const diary = await store.createDiary({ date: new Date().toISOString().slice(0, 10) })
     if (!diary) return
-    title.value = diary.title
-    tagList.value = [...diary.tags]
+    diaryId = diary.id
+    title.value = diary.title || ''
+    tagList.value = [...(diary.tags || [])]
     editorContent.value = diary.content
     store.currentDiary = diary
-    // 用 replaceState 避免路由重建，直接改 URL
-    history.replaceState(null, '', `#/edit/${diary.id}?date=${diary.date}`)
     editorReady.value = true
   } else {
-    await loadDiaryData(id)
+    diaryId = id
+    const date = route.query.date || new Date().toISOString().slice(0, 10)
+    const diary = await store.loadDiary(date, id)
+    if (diary) {
+      title.value = diary.title || ''
+      tagList.value = [...(diary.tags || [])]
+      editorContent.value = diary.content
+      store.currentDiary = diary
+    }
+    editorReady.value = true
   }
 })
 
-// 监听路由变化（router.replace 触发的重建场景）
-watch(() => route.params.id, (newId) => {
-  if (newId && newId !== 'new') {
-    loadDiaryData(newId)
-  }
-})
+function onEditorUpdate(newContent) {
+  editorContent.value = newContent
+  scheduleAutoSave()
+}
 
-function onEditorUpdate() { scheduleAutoSave() }
-function onMetaChange() { scheduleAutoSave() }
+function onMetaChange() {
+  scheduleAutoSave()
+}
 
 function scheduleAutoSave() {
   clearTimeout(saveTimer)
@@ -101,35 +101,6 @@ async function save() {
   } finally {
     saving.value = false
   }
-}
-
-async function exportAsHTML() {
-  await save()
-  const { diaryToHTML } = await import('@/services/export')
-  const html = diaryToHTML({
-    ...store.currentDiary,
-    title: title.value,
-    tags: tagList.value,
-    content: editorContent.value,
-  })
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-  const reader = new FileReader()
-  reader.onload = () => {
-    if (window.electronAPI?.saveExportFile) {
-      window.electronAPI.saveExportFile({
-        filename: `diary_${store.currentDiary.date}_${title.value || 'untitled'}.html`,
-        data: reader.result,
-      })
-    } else {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `diary_${store.currentDiary.date}.html`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-  }
-  reader.readAsDataURL(blob)
 }
 
 function goBack() {
@@ -184,7 +155,7 @@ onBeforeUnmount(() => clearTimeout(saveTimer))
   padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
 }
 .btn-primary:disabled { opacity: 0.5; }
-.tags-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tags-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 28px; }
 .tag-chip {
   background: var(--accent); color: #fff; font-size: 12px;
   padding: 3px 10px; border-radius: 12px; cursor: pointer;
