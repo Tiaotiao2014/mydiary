@@ -6,12 +6,14 @@ import HomeView from './views/HomeView.vue'
 import EditorView from './views/EditorView.vue'
 import LockView from './views/LockView.vue'
 import SettingsView from './views/SettingsView.vue'
+import TrashView from './views/TrashView.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView },
   { path: '/edit/:id', name: 'editor', component: EditorView },
   { path: '/lock', name: 'lock', component: LockView },
   { path: '/settings', name: 'settings', component: SettingsView },
+  { path: '/trash', name: 'trash', component: TrashView },
 ]
 
 const router = createRouter({

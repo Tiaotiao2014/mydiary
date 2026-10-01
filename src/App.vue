@@ -3,7 +3,7 @@
     <div class="topbar">
       <span class="app-title" @click="router.push('/')">MyDiary</span>
       <div class="topbar-actions">
-        <button class="btn btn-ghost-top" @click="router.push('/settings')" title="设置">⚙️</button>
+        <button class="btn btn-ghost-top" @click="router.push('/trash')" title="回收站">🗑</button>
         <button class="btn btn-ghost-top" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
         <button class="btn btn-primary" @click="router.push('/edit/new')">＋ 新建</button>
       </div>
@@ -84,3 +84,4 @@ body {
 }
 .btn-ghost-top:hover { opacity: 1; }
 </style>
+
