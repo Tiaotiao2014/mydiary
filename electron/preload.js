@@ -20,4 +20,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 附件
   saveAttachment: (data) => ipcRenderer.invoke('save-attachment', data),
+  saveExportFile: (data) => ipcRenderer.invoke('save-export-file', data),
 })
+

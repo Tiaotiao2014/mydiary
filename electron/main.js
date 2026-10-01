@@ -208,6 +208,36 @@ ipcMain.handle('list-trash', () => {
   return result
 })
 
+// 导出整库 ZIP
+ipcMain.handle('export-library-zip', async (_e) => {
+  const lib = getLibraryPath()
+  if (!lib) throw new Error('Library not initialized')
+  const { default: archiver } = await import('archiver').catch(() => ({ default: null }))
+  if (!archiver) {
+    // 没有 archiver 时降级为复制整个目录
+    const target = path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`)
+    return target
+  }
+  const fs = require('fs')
+  const output = fs.createWriteStream(path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`))
+  const archive = archiver('zip')
+  output.on('close', () => resolve())
+  archive.pipe(output)
+  archive.directory(lib, 'mydiary')
+  await archive.finalize()
+  return path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`)
+})
+
+// 保存导出文件（HTML 等）
+ipcMain.handle('save-export-file', (_e, { filename, data, type }) => {
+  const downloadsDir = app.getPath('downloads')
+  const filePath = path.join(downloadsDir, filename)
+  // data 是 dataURL
+  const base64 = data.split(',')[1]
+  fs.writeFileSync(filePath, Buffer.from(base64, 'base64'))
+  return filePath
+})
+
 ipcMain.handle('save-attachment', (_e, { data, filename }) => {
   const lib = getLibraryPath()
   if (!lib) return null
@@ -218,4 +248,5 @@ ipcMain.handle('save-attachment', (_e, { data, filename }) => {
   fs.writeFileSync(path.join(attDir, id), Buffer.from(data, 'base64'))
   return `attachments/${id}`
 })
+
 

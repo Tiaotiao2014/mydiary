@@ -2,7 +2,6 @@
   <div class="settings-page">
     <h2>设置</h2>
 
-    <!-- 主密码 -->
     <section class="settings-section">
       <h3>主密码</h3>
       <p class="section-desc">设置后每次启动需输入密码解锁。忘记密码将导致全库不可读。</p>
@@ -15,20 +14,12 @@
       <div v-if="!hasMasterPassword" class="password-form">
         <input v-model="newPassword" type="password" placeholder="新密码（最少 6 位）" class="pw-input" />
         <input v-model="confirmPassword" type="password" placeholder="确认密码" class="pw-input" />
-        <button
-          class="btn btn-primary"
-          :disabled="!canSetPassword"
-          @click="setMasterPassword"
-        >
-          设置主密码
-        </button>
+        <button class="btn btn-primary" :disabled="!canSetPassword" @click="setMasterPassword">设置主密码</button>
       </div>
-
       <p v-if="passwordError" class="error">{{ passwordError }}</p>
       <p v-if="passwordSuccess" class="success">{{ passwordSuccess }}</p>
     </section>
 
-    <!-- 主题 -->
     <section class="settings-section">
       <h3>外观</h3>
       <div class="theme-row">
@@ -43,7 +34,12 @@
       </div>
     </section>
 
-    <!-- 回收站 -->
+    <section class="settings-section">
+      <h3>备份与迁移</h3>
+      <p class="section-desc">将全部日记导出为 ZIP 文件，可在新设备上导入还原。</p>
+      <button class="btn btn-primary" @click="exportZip">⬇ 导出整库 ZIP</button>
+    </section>
+
     <section class="settings-section">
       <h3>回收站</h3>
       <button class="btn btn-danger" @click="emptyTrash">清空回收站</button>
@@ -90,9 +86,8 @@ async function setMasterPassword() {
     passwordError.value = '两次密码不一致'
     return
   }
-  // 写入 config
   if (window.electronAPI) {
-    await window.electronAPI.setConfig({ ...config.value, masterPasswordSet: true, theme: config.value?.theme })
+    await window.electronAPI.setConfig({ ...config.value, masterPasswordSet: true })
     hasMasterPassword.value = true
     passwordSuccess.value = '主密码已启用'
     newPassword.value = ''
@@ -107,12 +102,19 @@ async function setTheme(theme) {
   }
 }
 
+function exportZip() {
+  if (window.electronAPI?.saveExportFile) {
+    alert('ZIP 导出将在完整构建后支持，当前版本请手动复制日记库文件夹。')
+  } else {
+    alert('ZIP 导出需要 Electron 环境')
+  }
+}
+
 async function emptyTrash() {
   if (confirm('确定清空回收站？30 天内的日记将被永久删除。')) {
     await store.emptyTrash()
   }
 }
-
 </script>
 
 <style scoped>
@@ -126,24 +128,20 @@ async function emptyTrash() {
 .section-desc { font-size: 13px; opacity: 0.6; margin-bottom: 12px; }
 .setting-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .setting-row label { font-size: 14px; display: flex; align-items: center; gap: 8px; }
-
 .password-form { display: flex; flex-direction: column; gap: 8px; }
 .pw-input {
   padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--bg); color: var(--fg); font-size: 14px; outline: none;
 }
 .pw-input:focus { border-color: var(--accent); }
-
 .error { color: #e74c3c; font-size: 13px; }
 .success { color: #27ae60; font-size: 13px; }
-
 .theme-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .theme-btn {
   padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
   background: transparent; color: var(--fg); cursor: pointer; font-size: 13px;
 }
 .theme-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
 .btn-danger {
   background: #e74c3c; color: #fff; border: none;
   padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
@@ -154,5 +152,10 @@ async function emptyTrash() {
   padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
   align-self: flex-start;
 }
+.btn-primary {
+  background: var(--accent); color: #fff;
+  padding: 8px 16px; border-radius: 8px; border: none;
+  cursor: pointer; font-size: 13px;
+}
+.btn-primary:hover { opacity: 0.85; }
 </style>
-

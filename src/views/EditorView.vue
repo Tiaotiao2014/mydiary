@@ -1,15 +1,10 @@
 <template>
   <div class="editor-page">
-    <!-- 标题行 -->
     <div class="editor-header">
-      <input
-        v-model="title"
-        class="title-input"
-        placeholder="日记标题..."
-        @change="onMetaChange"
-      />
+      <input v-model="title" class="title-input" placeholder="日记标题..." @change="onMetaChange" />
       <div class="header-actions">
         <button class="btn btn-ghost" @click="goBack">← 返回</button>
+        <button class="btn btn-ghost" @click="exportAsHTML">⬇ HTML</button>
         <button class="btn btn-ghost" @click="deleteDiary">🗑 删除</button>
         <button class="btn btn-primary" :disabled="saving" @click="save">
           {{ saving ? '保存中...' : '保存' }}
@@ -17,33 +12,18 @@
       </div>
     </div>
 
-    <!-- 标签 -->
     <div class="tags-row">
-      <span v-for="tag in tagList" :key="tag" class="tag-chip" @click="removeTag(tag)">
-        {{ tag }} ×
-      </span>
-      <input
-        v-if="addingTag"
-        v-model="tagInput"
-        class="tag-input"
-        @blur="confirmTag"
-        @keyup.enter="confirmTag"
-        ref="tagInputRef"
-      />
+      <span v-for="tag in tagList" :key="tag" class="tag-chip" @click="removeTag(tag)">{{ tag }} ×</span>
+      <input v-if="addingTag" v-model="tagInput" class="tag-input" @blur="confirmTag" @keyup.enter="confirmTag" ref="tagInputRef" />
       <button v-else class="tag-add" @click="addingTag = true">＋ 标签</button>
     </div>
 
-    <!-- 编辑器 -->
-    <DiaryEditor
-      v-if="editorReady"
-      v-model:content="editorContent"
-      @update="onEditorUpdate"
-    />
+    <DiaryEditor v-if="editorReady" v-model:content="editorContent" @update="onEditorUpdate" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
 import DiaryEditor from '@/components/DiaryEditor.vue'
@@ -60,22 +40,18 @@ const tagInputRef = ref(null)
 const editorContent = ref(null)
 const editorReady = ref(false)
 const saving = ref(false)
-
 let saveTimer = null
 
 onMounted(async () => {
   const id = route.params.id
   if (!id) return
-
   if (id === 'new') {
-    // 新建
     const diary = await store.createDiary({ date: new Date().toISOString().slice(0, 10) })
     if (!diary) return
     title.value = diary.title
     tagList.value = [...diary.tags]
     editorContent.value = diary.content
     editorReady.value = true
-    // 替换路由为真实 id
     router.replace(`/edit/${diary.id}?date=${diary.date}`)
     store.currentDiary = diary
   } else {
@@ -90,14 +66,8 @@ onMounted(async () => {
   }
 })
 
-function onEditorUpdate() {
-  scheduleAutoSave()
-}
-
-function onMetaChange() {
-  scheduleAutoSave()
-}
-
+function onEditorUpdate() { scheduleAutoSave() }
+function onMetaChange() { scheduleAutoSave() }
 function scheduleAutoSave() {
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 2000)
@@ -116,6 +86,35 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+async function exportAsHTML() {
+  await save()
+  const { diaryToHTML } = await import('@/services/export')
+  const html = diaryToHTML({
+    ...store.currentDiary,
+    title: title.value,
+    tags: tagList.value,
+    content: editorContent.value,
+  })
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (window.electronAPI?.saveExportFile) {
+      window.electronAPI.saveExportFile({
+        filename: `diary_${store.currentDiary.date}_${title.value || 'untitled'}.html`,
+        data: reader.result,
+      })
+    } else {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `diary_${store.currentDiary.date}.html`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+  reader.readAsDataURL(blob)
 }
 
 function goBack() {
@@ -158,7 +157,7 @@ onBeforeUnmount(() => clearTimeout(saveTimer))
   border: none; background: transparent; color: var(--fg); outline: none;
 }
 .title-input::placeholder { color: var(--fg); opacity: 0.3; }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn-ghost {
   background: transparent; color: var(--fg); opacity: 0.7;
   border: 1px solid var(--border); border-radius: 8px;
