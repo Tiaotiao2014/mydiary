@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 库 & 配置
   getLibraryPath: () => ipcRenderer.invoke('get-library-path'),
   getConfig: () => ipcRenderer.invoke('get-config'),
+  setConfig: (config) => ipcRenderer.invoke('set-config', config),
 
   // 日记 CRUD
   listDiaries: () => ipcRenderer.invoke('list-diaries'),

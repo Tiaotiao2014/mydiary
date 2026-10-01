@@ -88,6 +88,14 @@ ipcMain.handle('get-config', () => {
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf-8')) : null
 })
 
+ipcMain.handle('set-config', (_e, newConfig) => {
+  const lib = getLibraryPath()
+  if (!lib) return
+  const p = path.join(lib, 'config.json')
+  fs.writeFileSync(p, JSON.stringify(newConfig, null, 2))
+  return true
+})
+
 ipcMain.handle('list-diaries', () => {
   const lib = getLibraryPath()
   if (!lib) return []
@@ -210,3 +218,4 @@ ipcMain.handle('save-attachment', (_e, { data, filename }) => {
   fs.writeFileSync(path.join(attDir, id), Buffer.from(data, 'base64'))
   return `attachments/${id}`
 })
+

@@ -3,9 +3,8 @@
     <div class="topbar">
       <span class="app-title" @click="router.push('/')">MyDiary</span>
       <div class="topbar-actions">
-        <button class="btn btn-ghost-top" @click="toggleTheme">
-          {{ isDark ? '☀️' : '🌙' }}
-        </button>
+        <button class="btn btn-ghost-top" @click="router.push('/settings')" title="设置">⚙️</button>
+        <button class="btn btn-ghost-top" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
         <button class="btn btn-primary" @click="router.push('/edit/new')">＋ 新建</button>
       </div>
     </div>
@@ -36,6 +35,9 @@ onMounted(async () => {
 
 function toggleTheme() {
   isDark.value = !isDark.value
+  if (window.electronAPI) {
+    window.electronAPI.setConfig({ theme: isDark.value ? 'dark' : 'light' })
+  }
 }
 </script>
 
