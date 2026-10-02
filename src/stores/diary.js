@@ -110,6 +110,13 @@ export const useDiaryStore = defineStore('diary', () => {
     }
   }
 
+  async function permanentDeleteTrash(date, id) {
+    if (isElectron()) {
+      await window.electronAPI.permanentDeleteTrash({ date, id })
+    }
+    trash.value = trash.value.filter(d => !(d.date === date && d.id === id))
+  }
+
   async function emptyTrash() {
     if (isElectron()) {
       await window.electronAPI.emptyTrash()
@@ -120,6 +127,6 @@ export const useDiaryStore = defineStore('diary', () => {
   return {
     diaries, trash, currentDiary, libraryPath, loading,
     initLibrary, fetchDiaries, createDiary, loadDiary, saveDiary,
-    deleteDiary, fetchTrash, restoreDiary, emptyTrash,
+    deleteDiary, fetchTrash, restoreDiary, permanentDeleteTrash, emptyTrash,
   }
 })

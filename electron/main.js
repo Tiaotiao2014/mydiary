@@ -203,6 +203,16 @@ ipcMain.handle('empty-trash', () => {
   return true
 })
 
+ipcMain.handle('permanent-delete-trash', (_e, { date, id }) => {
+  const lib = getLibraryPath()
+  if (!lib) throw new Error('Library not initialized')
+  const trashDir = path.join(lib, '.trash', `${date}_${id}`)
+  if (fs.existsSync(trashDir)) {
+    fs.rmSync(trashDir, { recursive: true, force: true })
+  }
+  return true
+})
+
 ipcMain.handle('list-trash', () => {
   const lib = getLibraryPath()
   if (!lib) return []

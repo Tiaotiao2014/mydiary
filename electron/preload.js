@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 回收站
   listTrash: () => ipcRenderer.invoke('list-trash'),
   emptyTrash: () => ipcRenderer.invoke('empty-trash'),
+  permanentDeleteTrash: (params) => ipcRenderer.invoke('permanent-delete-trash', params),
 
   // 附件
   saveAttachment: (data) => ipcRenderer.invoke('save-attachment', data),
