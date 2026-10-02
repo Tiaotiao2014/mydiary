@@ -43,6 +43,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: false,
+    },
   })
   if (isDev) {
     mainWindow.loadURL(devServerUrl)
@@ -229,23 +230,17 @@ ipcMain.handle('list-trash', () => {
 })
 
 // 导出整库 ZIP
-ipcMain.handle('export-library-zip', async (_e) => {
+ipcMain.handle('export-library-zip', () => {
   const lib = getLibraryPath()
   if (!lib) throw new Error('Library not initialized')
-  const { default: archiver } = await import('archiver').catch(() => ({ default: null }))
-  if (!archiver) {
-    // 没有 archiver 时降级为复制整个目录
-    const target = path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`)
-    return target
-  }
-  const fs = require('fs')
-  const output = fs.createWriteStream(path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`))
+  const zipPath = path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`)
+  const archiver = require('archiver')
+  const output = fs.createWriteStream(zipPath)
   const archive = archiver('zip')
-  output.on('close', () => resolve())
   archive.pipe(output)
   archive.directory(lib, 'mydiary')
-  await archive.finalize()
-  return path.join(app.getPath('downloads'), `mydiary_library_${Date.now()}.zip`)
+  archive.finalize().catch(e => { console.error(e) })
+  return zipPath
 })
 
 // 保存导出文件（HTML 等）
