@@ -43,7 +43,10 @@
           class="diary-card"
           @click="openDiary(d)"
         >
-          <div class="diary-title">{{ d.title || '无标题' }}</div>
+          <div class="diary-card-inner">
+            <div class="diary-title">{{ d.title || '无标题' }}</div>
+            <button class="diary-delete" @click.stop="deleteDiary(d)" title="删除到回收站">🗑</button>
+          </div>
           <div class="diary-preview">{{ getPreview(d) }}</div>
           <div class="diary-tags">
             <span v-for="tag in d.tags" :key="tag" class="tag" @click.stop="setTag(tag)">
@@ -115,6 +118,12 @@ function openDiary(d) {
   router.push(`/edit/${d.id}?date=${d.date}`)
 }
 
+function deleteDiary(d) {
+  if (confirm('确定删除「' + (d.title || '无标题') + '」吗？（删除后可在回收站恢复）')) {
+    store.deleteDiary(d.date, d.id).then(() => store.fetchDiaries())
+  }
+}
+
 function setTag(tag) {
   activeTag.value = tag
 }
@@ -160,7 +169,15 @@ function setTag(tag) {
   transition: border-color 0.15s;
 }
 .diary-card:hover { border-color: var(--accent); }
+.diary-card-inner { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .diary-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.diary-delete {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 14px; opacity: 0; transition: opacity 0.15s;
+  padding: 2px 6px; border-radius: 6px;
+}
+.diary-card:hover .diary-delete { opacity: 0.6; }
+.diary-delete:hover { opacity: 1 !important; background: rgba(231,76,60,0.15); }
 .diary-preview { font-size: 13px; opacity: 0.65; margin-bottom: 8px; line-height: 1.5; }
 .diary-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag {

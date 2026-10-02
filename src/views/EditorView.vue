@@ -5,8 +5,8 @@
       <div class="header-actions">
         <button class="btn btn-ghost" @click="goBack">← 返回</button>
         <button class="btn btn-ghost" @click="deleteDiary">🗑 删除</button>
-        <button class="btn btn-primary" :disabled="saving" @click="save">
-          {{ saving ? '保存中...' : '保存' }}
+        <button class="btn btn-primary" :disabled="saving" @click="save(true)">
+          {{ saving ? '保存中...' : lastSaveText }}
         </button>
       </div>
     </div>
@@ -44,6 +44,8 @@ const tagInput = ref('')
 const editorContent = ref(null)
 const editorReady = ref(false)
 const saving = ref(false)
+const lastSaveText = ref('保存')
+let isManualSave = false
 let saveTimer = null
 let diaryId = null
 
@@ -88,7 +90,8 @@ function scheduleAutoSave() {
   saveTimer = setTimeout(save, 2000)
 }
 
-async function save() {
+async function save(manual = false) {
+  isManualSave = manual
   if (!store.currentDiary) return
   saving.value = true
   try {
@@ -100,6 +103,8 @@ async function save() {
     })
   } finally {
     saving.value = false
+    lastSaveText.value = isManualSave ? '已保存' : '已自动保存'
+
   }
 }
 

@@ -50,11 +50,13 @@ onMounted(() => store.fetchTrash())
 
 async function restoreDiary(d) {
   await store.restoreDiary(d.date, d.id)
+  await store.fetchTrash()
 }
 
 async function emptyTrash() {
   if (confirm('确定清空回收站？30 天内的日记将被永久删除。')) {
     await store.emptyTrash()
+    await store.fetchTrash()
   }
 }
 

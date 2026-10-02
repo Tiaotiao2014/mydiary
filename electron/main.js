@@ -164,6 +164,15 @@ ipcMain.handle('delete-diary', (_e, { date, id }) => {
   const srcDir = path.join(lib, 'diaries', date, id)
   const trashDir = path.join(lib, '.trash', `${date}_${id}`)
   if (fs.existsSync(srcDir)) {
+    // record deletedAt in diary.json before moving
+    const diaryFile = path.join(srcDir, 'diary.json')
+    if (fs.existsSync(diaryFile)) {
+      try {
+        const d = JSON.parse(fs.readFileSync(diaryFile, 'utf-8'))
+        d.deletedAt = new Date().toISOString()
+        fs.writeFileSync(diaryFile, JSON.stringify(d, null, 2))
+      } catch { /* ignore */ }
+    }
     fs.mkdirSync(path.dirname(trashDir), { recursive: true })
     fs.renameSync(srcDir, trashDir)
   }
@@ -187,8 +196,9 @@ ipcMain.handle('empty-trash', () => {
   if (!lib) return
   const trashDir = path.join(lib, '.trash')
   if (fs.existsSync(trashDir)) {
-    fs.rmSync(trashDir, { recursive: true, force: true })
-    fs.mkdirSync(trashDir)
+    for (const entry of fs.readdirSync(trashDir)) {
+      fs.rmSync(path.join(trashDir, entry), { recursive: true, force: true })
+    }
   }
   return true
 })

@@ -29,13 +29,13 @@
 
       <span class="tb-sep"></span>
 
-      <!-- 表格 -->
-      <button @click="() => alert('表格功能待修复')" title="插入表格" disabled>▦</button>
+      <!-- 表格（待修复） -->
+      <button title="插入表格（待修复）" disabled>▦</button>
 
       <span class="tb-sep"></span>
 
-      <!-- 公式 -->
-      <button @click="insertMath" title="插入公式">∑</button>
+      <!-- 公式（待修复） -->
+      <button title="插入公式（待修复）" disabled>∑</button>
     </div>
 
     <!-- 编辑区域 -->
@@ -53,53 +53,35 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-// import { Table } from '@tiptap/extension-table'
-// import { TableRow } from '@tiptap/extension-table-row'
-// import { TableHeader } from '@tiptap/extension-table-header'
-// import { Mathematics } from '@tiptap/extension-mathematics'
-
-import 'katex/dist/katex.min.css'
 
 const props = defineProps({
   content: { type: [Object, String], default: null },
 })
-const emit = defineEmits(['update', 'update:content'])
+const emit = defineEmits(['update'])
 
 const fileInput = ref(null)
 
 const editor = useEditor({
   extensions: [
-    StarterKit,
-    Image,
-//     Table.configure({
-//       resizable: false,
-//       allowHeaderRow: true,
-//       allowHeaderColumn: true,
-//       allowHeaderCells: true,
-//     }),
-//     TableRow,
-//     TableHeader,
-//     Mathematics.configure({
-//       katexOptions: { throwOnError: false },
-//     }),
+    // 代码块配 enterCodeBlock：代码块后按 Enter 自动插入新段落，可继续书写
+    StarterKit.configure({
+      codeBlock: {
+        enterCodeBlock: true,
+      },
+    }),
+    Image.configure({
+      allowBase64: true,
+    }),
   ],
+  // 只在初始化时传入内容，之后编辑器自己管理
   content: props.content || '',
   onUpdate: ({ editor: e }) => {
     emit('update', e.getJSON())
-    emit('update:content', e.getJSON())
   },
-})
-
-// content prop 变化时同步到编辑器
-watch(() => props.content, (newContent) => {
-  if (editor.value && newContent) {
-    editor.value.commands.setContent(newContent, false)
-    nextTick(() => editor.value?.commands.focus('start'))
-  }
 })
 
 // 挂载后聚焦编辑器
@@ -115,28 +97,20 @@ async function insertImage() {
 
 async function onImageSelected(e) {
   const file = e.target.files?.[0]
-  if (!file || !window.electronAPI) return
+  if (!file) return
   const reader = new FileReader()
   reader.onload = async () => {
-    const base64 = reader.result.split(',')[1]
-    const relPath = await window.electronAPI.saveAttachment({ data: base64, filename: file.name })
-    editor.value?.chain().focus().setImage({ src: relPath }).run()
+    const base64 = reader.result
+    if (window.electronAPI?.saveAttachment) {
+      const relPath = await window.electronAPI.saveAttachment({ data: base64.split(',')[1], filename: file.name })
+      editor.value?.chain().focus().setImage({ src: relPath }).run()
+    } else {
+      // 纯浏览器环境：直接内嵌 base64
+      editor.value?.chain().focus().setImage({ src: base64 }).run()
+    }
   }
   reader.readAsDataURL(file)
   e.target.value = ''
-}
-
-function insertTable() {
-  alert('表格功能待修复')
-}
-
-function insertMath() {
-  const latex = prompt('请输入 LaTeX 公式：', 'E = mc^2')
-  if (latex) {
-    editor.value?.chain().focus().insertContent([
-      { type: 'inlineMath', attrs: { latex } },
-    ]).run()
-  }
 }
 </script>
 
@@ -151,8 +125,9 @@ function insertMath() {
   padding: 5px 9px; border: none; background: transparent;
   color: var(--fg); cursor: pointer; border-radius: 4px; font-size: 13px; min-width: 32px;
 }
-.editor-toolbar button:hover { background: var(--accent); color: #fff; }
+.editor-toolbar button:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .editor-toolbar button.active { background: var(--accent); color: #fff; }
+.editor-toolbar button:disabled { opacity: 0.35; cursor: not-allowed; }
 .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
 
 .editor-content { min-height: 400px; }
@@ -167,16 +142,8 @@ function insertMath() {
 }
 .editor-content :deep(.ProseMirror pre) {
   background: var(--card-bg); border-radius: 6px; padding: 12px;
-  font-family: monospace; font-size: 13px;
+  font-family: monospace; font-size: 13px; position: relative;
 }
-.editor-content :deep(.ProseMirror table) {
-  border-collapse: collapse; width: 100%; margin: 1em 0;
-}
-.editor-content :deep(.ProseMirror th),
-.editor-content :deep(.ProseMirror td) {
-  border: 1px solid var(--border); padding: 8px 10px; font-size: 14px;
-}
-.editor-content :deep(.ProseMirror th) { background: var(--card-bg); font-weight: 600; }
+.editor-content :deep(.ProseMirror pre code) { font-family: inherit; }
 .editor-content :deep(.ProseMirror img) { max-width: 100%; border-radius: 4px; }
-.editor-content :deep(.katex-display) { margin: 1em 0; overflow-x: auto; }
 </style>
