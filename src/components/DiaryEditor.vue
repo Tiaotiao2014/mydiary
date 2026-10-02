@@ -30,7 +30,7 @@
       <span class="tb-sep"></span>
 
       <!-- 表格 -->
-      <button @click="insertTable" title="插入表格">▦</button>
+      <button @click="() => alert('表格功能待修复')" title="插入表格" disabled>▦</button>
 
       <span class="tb-sep"></span>
 
@@ -57,9 +57,9 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-import { Table } from '@tiptap/extension-table'
-import { TableRow } from '@tiptap/extension-table-row'
-import { TableHeader } from '@tiptap/extension-table-header'
+// import { Table } from '@tiptap/extension-table'
+// import { TableRow } from '@tiptap/extension-table-row'
+// import { TableHeader } from '@tiptap/extension-table-header'
 // import { Mathematics } from '@tiptap/extension-mathematics'
 
 import 'katex/dist/katex.min.css'
@@ -75,14 +75,14 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     Image,
-    Table.configure({
-      resizable: false,
-      allowHeaderRow: true,
-      allowHeaderColumn: true,
-      allowHeaderCells: true,
-    }),
-    TableRow,
-    TableHeader,
+//     Table.configure({
+//       resizable: false,
+//       allowHeaderRow: true,
+//       allowHeaderColumn: true,
+//       allowHeaderCells: true,
+//     }),
+//     TableRow,
+//     TableHeader,
 //     Mathematics.configure({
 //       katexOptions: { throwOnError: false },
 //     }),
@@ -127,7 +127,7 @@ async function onImageSelected(e) {
 }
 
 function insertTable() {
-  editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+  alert('表格功能待修复')
 }
 
 function insertMath() {
