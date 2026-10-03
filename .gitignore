@@ -9,6 +9,9 @@ library.zip
 # 日记数据目录：属于用户个人数据，且路径写死在本机
 _demo-library/
 
+# README 截图专用的演示库（虚构数据，仅本机）
+_shots-library/
+
 # 工具状态与工作记录：含本机绝对路径（用户名等），不外传
 .workbuddy/
 
