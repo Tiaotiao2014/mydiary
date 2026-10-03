@@ -38,20 +38,23 @@ jobs:
       # 未配置签名证书时不要传 CSC_LINK：空字符串会被 electron-builder
       # 当成证书路径，报 "not a file" 导致构建失败。
       # 将来如需签名：先在仓库 Secrets 添加 CSC_LINK / CSC_KEY_PASSWORD，再补回 env。
+      # 统一加 --publish never：否则 electron-builder 在 CI 中会自动尝试
+      # 发布到 GitHub Release，因缺少 GH_TOKEN 而报错中断构建。
+      # 本仓库改由下方 "Attach installers to Release" 步骤统一上传。
       - name: Build Electron (Windows)
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win nsis
+        run: npx electron-builder --win nsis --publish never
 
       - name: Build Electron (macOS)
         if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac dmg
+        run: npx electron-builder --mac dmg --publish never
         env:
           # 本仓库暂无签名证书，明确跳过签名身份自动发现
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Build Electron (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npx electron-builder --linux AppImage
+        run: npx electron-builder --linux AppImage --publish never
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
