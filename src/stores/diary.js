@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useSecurityStore } from './security'
 
 /**
  * 送往 IPC 之前，必须把 Vue 响应式对象（Proxy）转成纯数据。
@@ -97,17 +98,39 @@ export const useDiaryStore = defineStore('diary', () => {
     }
   }
 
+  /**
+   * 把磁盘上的原始日记整理成界面可用的形态。
+   * 加密日记：已解锁则解密出标题/标签/正文；未解锁则打上 locked 标记，
+   * 界面据此显示锁图标而**不显示任何明文内容**。
+   */
+  async function resolveDiary(d) {
+    if (!d || !d.encrypted) return d
+    const security = useSecurityStore()
+    if (!security.isUnlocked) return { ...d, locked: true, title: '', tags: [] }
+    try {
+      const payload = await security.decrypt(d.encryptedContent)
+      return { ...d, title: payload.title || '', tags: payload.tags || [], content: payload.content || null, locked: false }
+    } catch {
+      // 密钥不对或数据损坏：同样按"锁定"处理，不展示任何内容
+      return { ...d, locked: true, title: '', tags: [], decryptFailed: true }
+    }
+  }
+
   async function fetchDiaries() {
     loading.value = true
     try {
-      if (isElectron()) {
-        diaries.value = await window.electronAPI.listDiaries()
-      } else {
-        diaries.value = browserDB.diaries
-      }
+      const raw = isElectron()
+        ? await window.electronAPI.listDiaries()
+        : browserDB.diaries
+      diaries.value = await Promise.all(raw.map(resolveDiary))
     } finally {
       loading.value = false
     }
+  }
+
+  /** 处于加密状态的日记篇数（移除主密码前要先确认这个为 0） */
+  function countEncrypted() {
+    return diaries.value.filter(d => d.encrypted).length
   }
 
   async function createDiary(data = {}) {
@@ -142,20 +165,44 @@ export const useDiaryStore = defineStore('diary', () => {
   }
 
   async function loadDiary(date, id) {
+    let raw = null
     if (isElectron()) {
-      currentDiary.value = await window.electronAPI.getDiary({ date, id })
-      return currentDiary.value
+      raw = await window.electronAPI.getDiary({ date, id })
+    } else {
+      raw = browserDB.diaries.find(d => d.id === id) || null
     }
-    const found = browserDB.diaries.find(d => d.id === id)
-    if (found) currentDiary.value = found
-    return found || null
+    currentDiary.value = raw
+    return raw ? await resolveDiary(raw) : null
   }
 
   async function saveDiary(diary) {
     if (!diary) return
-    if (isElectron()) {
-      await window.electronAPI.saveDiary(toPlain({ date: diary.date, id: diary.id, data: diary }))
+    const security = useSecurityStore()
+
+    // 落盘用的对象：先剔除纯界面标记，再按是否加密决定写什么
+    const diskData = { ...diary }
+    delete diskData.locked
+    delete diskData.decryptFailed
+
+    if (diskData.encrypted) {
+      if (!security.isUnlocked) throw new Error('尚未解锁，无法保存加密日记')
+      // 标题、标签、正文一并加密 —— 标题往往比正文更敏感，不能留在明文里
+      diskData.encryptedContent = await security.encrypt({
+        title: diary.title || '',
+        tags: diary.tags || [],
+        content: diary.content || null,
+      })
+      diskData.title = ''
+      diskData.tags = []
+      diskData.content = null
+    } else {
+      diskData.encryptedContent = null
     }
+
+    if (isElectron()) {
+      await window.electronAPI.saveDiary(toPlain({ date: diskData.date, id: diskData.id, data: diskData }))
+    }
+
     diary.updatedAt = new Date().toISOString()
     const idx = browserDB.diaries.findIndex(d => d.id === diary.id)
     if (idx !== -1) browserDB.diaries[idx] = { ...diary }
@@ -186,7 +233,9 @@ export const useDiaryStore = defineStore('diary', () => {
 
   async function fetchTrash() {
     if (isElectron()) {
-      trash.value = await window.electronAPI.listTrash()
+      const raw = await window.electronAPI.listTrash()
+      // 回收站里也可能有加密日记，同样按解锁状态决定是否解出标题
+      trash.value = await Promise.all(raw.map(resolveDiary))
     } else {
       trash.value = browserDB.trash
       diaries.value = browserDB.diaries
@@ -235,5 +284,6 @@ export const useDiaryStore = defineStore('diary', () => {
     diaries, trash, currentDiary, libraryPath, loading,
     initLibrary, fetchDiaries, createDiary, loadDiary, saveDiary,
     deleteDiary, fetchTrash, restoreDiary, permanentDeleteTrash, emptyTrash,
+    resolveDiary, countEncrypted,
   }
 })

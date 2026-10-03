@@ -4,18 +4,29 @@
 
     <section class="settings-section">
       <h3>主密码</h3>
-      <p class="section-desc">设置后每次启动需输入密码解锁。忘记密码将导致全库不可读。</p>
-      <div class="setting-row">
-        <label>
-          <input type="checkbox" v-model="hasMasterPassword" />
-          启用主密码
-        </label>
-      </div>
-      <div v-if="!hasMasterPassword" class="password-form">
+      <p class="section-desc">
+        主密码用于加密你标记为「加密」的日记：标题、标签、正文都会被加密后才写入硬盘，
+        没有密码无法打开（标题在磁盘上也是空的）。密码本身不会被保存，只保存由它派生出的
+        校验块，因此<strong>密码无法找回</strong>。设置后每次启动都需要输入一次。
+      </p>
+
+      <div v-if="!security.hasMasterPassword" class="password-form">
         <input v-model="newPassword" type="password" placeholder="新密码（最少 6 位）" class="pw-input" />
         <input v-model="confirmPassword" type="password" placeholder="确认密码" class="pw-input" />
         <button class="btn btn-primary" :disabled="!canSetPassword" @click="setMasterPassword">设置主密码</button>
       </div>
+
+      <template v-else>
+        <p class="section-desc">
+          当前状态：<strong>{{ security.isUnlocked ? '已解锁' : '已锁定' }}</strong>
+          · 已加密日记 {{ encryptedCount }} 篇
+        </p>
+        <div class="export-actions">
+          <button class="btn btn-outline" :disabled="!security.isUnlocked" @click="lockNow">立即锁定</button>
+          <button class="btn btn-danger" @click="removePassword">移除主密码</button>
+        </div>
+      </template>
+
       <p v-if="passwordError" class="error">{{ passwordError }}</p>
       <p v-if="passwordSuccess" class="success">{{ passwordSuccess }}</p>
     </section>
@@ -155,12 +166,15 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
 import { useUiStore } from '@/stores/ui'
+import { useSecurityStore } from '@/stores/security'
 
 const router = useRouter()
 const ui = useUiStore()
+const security = useSecurityStore()
 const store = useDiaryStore()
 
-const hasMasterPassword = ref(false)
+const encryptedCount = computed(() => store.countEncrypted())
+
 const newPassword = ref('')
 const confirmPassword = ref('')
 const passwordError = ref('')
@@ -179,8 +193,10 @@ const mergeStrategy = ref('skip-existing')
 onMounted(async () => {
   if (window.electronAPI) {
     config.value = await window.electronAPI.getConfig()
-    hasMasterPassword.value = !!config.value?.masterPasswordSet
   }
+  await security.loadConfig()
+  // 需要篇数来提示"还有几篇加密日记"，也用于判断能否移除主密码
+  try { await store.fetchDiaries() } catch { /* 忽略 */ }
 })
 
 const canSetPassword = computed(() => {
@@ -198,12 +214,33 @@ async function setMasterPassword() {
     passwordError.value = '两次密码不一致'
     return
   }
-  if (window.electronAPI) {
-    await window.electronAPI.setConfig({ ...config.value, masterPasswordSet: true })
-    hasMasterPassword.value = true
-    passwordSuccess.value = '主密码已启用'
+  try {
+    await security.setMasterPassword(newPassword.value)
     newPassword.value = ''
     confirmPassword.value = ''
+    config.value = { ...(config.value || {}), masterPasswordSet: true }
+    passwordSuccess.value = '主密码已设置，当前处于已解锁状态'
+  } catch (e) {
+    passwordError.value = '设置失败：' + (e?.message || e)
+  }
+}
+
+function lockNow() {
+  security.lock()
+  passwordSuccess.value = '已锁定，需要密码才能查看加密日记'
+  // 跳首页会因门禁自动转到解锁页
+  router.push('/')
+}
+
+async function removePassword() {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+  try {
+    await security.removeMasterPassword(encryptedCount.value)
+    config.value = { ...(config.value || {}), masterPasswordSet: false }
+    passwordSuccess.value = '主密码已移除'
+  } catch (e) {
+    passwordError.value = e?.message || String(e)
   }
 }
 

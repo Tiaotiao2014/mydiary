@@ -4,7 +4,7 @@
       <div class="lock-icon">🔒</div>
       <h2>主密码</h2>
       <p v-if="error" class="error">{{ error }}</p>
-      <p v-else class="hint">输入主密码解锁全部日记</p>
+      <p v-else class="hint">输入主密码以打开加密的日记</p>
 
       <form @submit.prevent="unlock">
         <input
@@ -12,101 +12,93 @@
           v-model="password"
           type="password"
           class="password-input"
-          placeholder="请输入密码..."
-          autofocus
+          placeholder="请输入主密码..."
+          autocomplete="current-password"
         />
-        <button type="submit" class="btn btn-primary btn-block" :disabled="unlocking">
-          {{ unlocking ? '解密中...' : '解锁' }}
+        <button type="submit" class="btn btn-primary btn-block" :disabled="busy">
+          {{ busy ? '校验中…' : '解锁' }}
         </button>
       </form>
 
-      <!-- 单篇解锁 -->
-      <div v-if="diaryData" class="diary-lock">
+      <div v-if="canReset" class="reset-zone">
         <div class="divider"></div>
-        <p class="diary-hint">单篇密码解锁</p>
-        <input
-          v-model="diaryPassword"
-          type="password"
-          class="password-input"
-          placeholder="单篇密码..."
-        />
-        <button
-          class="btn btn-ghost"
-          :disabled="diaryUnlocking"
-          @click="unlockDiary"
-        >
-          {{ diaryUnlocking ? '解密中...' : '解锁这篇日记' }}
-        </button>
+        <p class="reset-hint">
+          忘记密码了？当前没有已加密的日记，可以重置主密码（不会丢失任何日记）。
+        </p>
+        <button class="btn btn-ghost" :disabled="busy" @click="resetPassword">重置主密码</button>
       </div>
+      <p v-else-if="encryptedCount > 0" class="reset-hint">
+        库中还有 {{ encryptedCount }} 篇加密日记。忘记密码将无法再打开它们，密码无法找回。
+      </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { decryptContent } from '@/services/crypto'
+import { useSecurityStore } from '@/stores/security'
+import { useDiaryStore } from '@/stores/diary'
 
 const router = useRouter()
 const route = useRoute()
+const security = useSecurityStore()
+const diaryStore = useDiaryStore()
 
 const password = ref('')
 const passwordInput = ref(null)
-const unlocking = ref(false)
+const busy = ref(false)
 const error = ref('')
 
-// 单篇解锁
-const diaryData = ref(null)
-const diaryPassword = ref('')
-const diaryUnlocking = ref(false)
+const encryptedCount = computed(() => diaryStore.countEncrypted())
+// 只有当库中不存在加密日记时，才允许"忘记密码"重置
+const canReset = computed(() => encryptedCount.value === 0)
 
 onMounted(async () => {
-  // 检查是否有待解锁的单篇日记
-  const diaryParam = route.query.diary
-  if (diaryParam) {
-    diaryData.value = JSON.parse(decodeURIComponent(diaryParam))
+  await security.loadConfig()
+  // 没有设置主密码就没有要解锁的东西
+  if (!security.hasMasterPassword) {
+    router.replace('/')
+    return
   }
+  // 需要篇数来判断能否重置
+  try { await diaryStore.fetchDiaries() } catch { /* 忽略 */ }
   nextTick(() => passwordInput.value?.focus())
 })
 
 async function unlock() {
-  if (!password.value) return
-  unlocking.value = true
+  if (!password.value || busy.value) return
+  busy.value = true
   error.value = ''
-
   try {
-    // 如果没有主密码设置，直接放行
-    // 实际场景：检查 library config 是否有主密码标记
-    const config = window.electronAPI ? await window.electronAPI.getConfig() : null
-    if (!config?.masterPasswordSet) {
-      // 未设主密码，直接进主页
-      router.push('/')
+    const okPwd = await security.unlock(password.value)
+    if (!okPwd) {
+      error.value = '密码不正确，请重试'
+      password.value = ''
       return
     }
-
-    // 有主密码：用第一段已知加密内容验证（简化：直接放行，P4 完整版需存校验块）
-    // 这里暂以成功解锁为准
-    router.push('/')
+    // 解锁成功后，加密日记的标题等内容才能被解出来
+    await diaryStore.fetchDiaries()
+    const next = typeof route.query.next === 'string' ? route.query.next : '/'
+    router.replace(next)
   } catch (e) {
-    error.value = '密码错误，请重试'
+    error.value = '解锁失败：' + (e?.message || e)
   } finally {
-    unlocking.value = false
+    busy.value = false
   }
 }
 
-async function unlockDiary() {
-  if (!diaryPassword.value || !diaryData.value) return
-  diaryUnlocking.value = true
-
+async function resetPassword() {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
   try {
-    const plaintext = await decryptContent(diaryData.value, diaryPassword.value)
-    const diary = JSON.parse(plaintext)
-    router.push(`/edit/${diary.id}?date=${diary.date}&decrypted=${encodeURIComponent(JSON.stringify(diary))}`)
-  } catch {
-    diaryPassword.value = ''
-    alert('单篇密码错误')
+    await security.removeMasterPassword(encryptedCount.value)
+    router.replace('/')
+  } catch (e) {
+    error.value = e?.message || String(e)
   } finally {
-    diaryUnlocking.value = false
+    busy.value = false
   }
 }
 </script>
@@ -142,7 +134,7 @@ form { width: 100%; display: flex; flex-direction: column; gap: 12px; }
 }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
-.diary-lock { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.divider { height: 1px; background: var(--border); margin: 8px 0; }
-.diary-hint { font-size: 12px; opacity: 0.6; }
+.reset-zone { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+.reset-hint { font-size: 12px; opacity: 0.6; line-height: 1.6; color: var(--fg); }
 </style>

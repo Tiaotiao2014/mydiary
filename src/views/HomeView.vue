@@ -44,11 +44,14 @@
           @click="openDiary(d)"
         >
           <div class="diary-card-inner">
-            <div class="diary-title">{{ d.title || '无标题' }}</div>
+            <div class="diary-title">
+              <span v-if="d.encrypted" class="lock-flag" :title="d.locked ? '已加密，需要主密码' : '已加密'">🔒</span>
+              {{ d.locked ? '已加密的日记' : (d.title || '无标题') }}
+            </div>
             <button class="diary-delete" @click.stop="requestDelete(d)" title="删除到回收站">🗑</button>
           </div>
-          <div class="diary-preview">{{ getPreview(d) }}</div>
-          <div class="diary-tags">
+          <div v-if="!d.locked" class="diary-preview">{{ getPreview(d) }}</div>
+          <div v-if="!d.locked" class="diary-tags">
             <span v-for="tag in d.tags" :key="tag" class="tag" @click.stop="setTag(tag)">
               {{ tag }}
             </span>
@@ -130,6 +133,11 @@ function getPreview(d) {
 }
 
 function openDiary(d) {
+  // 加密且尚未解锁：先到解锁页，解锁后自动回到这篇日记
+  if (d.encrypted && d.locked) {
+    router.push({ path: '/lock', query: { next: `/edit/${d.id}?date=${d.date}` } })
+    return
+  }
   router.push(`/edit/${d.id}?date=${d.date}`)
 }
 
@@ -192,6 +200,7 @@ function setTag(tag) {
 .diary-card:hover { border-color: var(--accent); }
 .diary-card-inner { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .diary-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.lock-flag { font-size: 13px; margin-right: 2px; }
 .diary-delete {
   background: transparent; border: none; cursor: pointer;
   /* 必须显式指定颜色：<button> 不继承父级 color，会落到浏览器默认的纯黑，

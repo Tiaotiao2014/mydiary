@@ -4,6 +4,12 @@
       <input v-model="title" class="title-input" placeholder="日记标题..." @change="onMetaChange" />
       <div class="header-actions">
         <button class="btn btn-ghost" @click="goBack">← 返回</button>
+        <button
+          class="btn btn-ghost"
+          :class="{ 'encrypted-on': isEncrypted }"
+          :title="isEncrypted ? '这篇日记已加密；点击可取消加密' : '把这篇日记加密（需要主密码）'"
+          @click="toggleEncrypt"
+        >{{ isEncrypted ? '🔒 已加密' : '🔓 未加密' }}</button>
         <div class="export-dropdown">
           <button class="btn btn-ghost" :disabled="exporting" @click="exportMenuOpen = !exportMenuOpen">
             {{ exporting ? '导出中…' : '⬇ 导出' }}
@@ -37,6 +43,20 @@
 
     <DiaryEditor v-if="editorReady" :content="editorContent" @update="onEditorUpdate" />
 
+    <!-- 加密/取消加密确认 -->
+    <Teleport to="body">
+      <div v-if="encryptPrompt" class="modal-overlay" @click.self="encryptPrompt = null">
+        <div class="modal">
+          <p>{{ encryptPrompt.title }}</p>
+          <p class="modal-hint">{{ encryptPrompt.hint }}</p>
+          <div class="modal-actions">
+            <button class="btn modal-cancel" @click="encryptPrompt = null">取消</button>
+            <button class="btn modal-confirm" @click="confirmToggleEncrypt">确定</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 删除确认对话框 -->
     <Teleport to="body">
       <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
@@ -57,12 +77,14 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDiaryStore } from '@/stores/diary'
+import { useSecurityStore } from '@/stores/security'
 import DiaryEditor from '@/components/DiaryEditor.vue'
 import { downloadDiary } from '@/services/export'
 
 const route = useRoute()
 const router = useRouter()
 const store = useDiaryStore()
+const security = useSecurityStore()
 
 const title = ref('')
 const tagList = ref([])
@@ -76,6 +98,8 @@ const showDeleteModal = ref(false)
 const exportMenuOpen = ref(false)
 const exporting = ref(false)
 const saveError = ref('')
+const isEncrypted = ref(false)
+const encryptPrompt = ref(null)
 let isManualSave = false
 let saveTimer = null
 let diaryId = null
@@ -98,14 +122,54 @@ onMounted(async () => {
     const date = route.query.date || new Date().toISOString().slice(0, 10)
     const diary = await store.loadDiary(date, id)
     if (diary) {
+      // 加密日记在未解锁时拿不到内容，先去解锁页，解锁后再回到这里
+      if (diary.encrypted && diary.locked) {
+        router.replace({ path: '/lock', query: { next: route.fullPath } })
+        return
+      }
       title.value = diary.title || ''
       tagList.value = [...(diary.tags || [])]
-      editorContent.value = diary.content
+      editorContent.value = diary.content || { type: 'doc', content: [{ type: 'paragraph' }] }
+      isEncrypted.value = !!diary.encrypted
       store.currentDiary = diary
     }
     editorReady.value = true
   }
 })
+
+/** 切换这篇日记的加密状态 */
+async function toggleEncrypt() {
+  if (!security.hasMasterPassword) {
+    alert('请先在「设置 → 主密码」里设置主密码，然后才能加密日记。')
+    router.push('/settings')
+    return
+  }
+  if (!security.isUnlocked) {
+    router.push({ path: '/lock', query: { next: route.fullPath } })
+    return
+  }
+  const turningOn = !isEncrypted.value
+  encryptPrompt.value = turningOn
+    ? { on: true, title: '加密这篇日记？', hint: '标题、标签、正文都会加密后才写入硬盘，没有主密码将无法打开。' }
+    : { on: false, title: '取消加密？', hint: '取消后这篇日记会以明文保存，任何人都能直接看到内容。' }
+}
+
+async function confirmToggleEncrypt() {
+  const turningOn = !!encryptPrompt.value?.on
+  encryptPrompt.value = null
+  isEncrypted.value = turningOn
+  try {
+    await save(true)
+    // 回读磁盘确认确实已按预期加密/解密，避免"看起来加密了其实没加"
+    const reread = await store.loadDiary(store.currentDiary.date, store.currentDiary.id)
+    if (reread) {
+      isEncrypted.value = !!reread.encrypted
+      store.currentDiary = reread
+    }
+  } catch (e) {
+    saveError.value = '加密状态切换失败：' + (e?.message || e)
+  }
+}
 
 function onEditorUpdate(newContent) {
   editorContent.value = newContent
@@ -129,6 +193,7 @@ async function save(manual = false) {
   try {
     await store.saveDiary({
       ...store.currentDiary,
+      encrypted: isEncrypted.value,
       title: title.value,
       tags: tagList.value,
       content: editorContent.value,
@@ -243,6 +308,7 @@ onBeforeUnmount(() => clearTimeout(saveTimer))
 }
 .btn-primary:disabled { opacity: 0.5; }
 .tags-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 28px; }
+.btn-ghost.encrypted-on { color: var(--accent); border-color: var(--accent); }
 .save-error {
   font-size: 13px; color: #e74c3c; background: rgba(231,76,60,0.1);
   border: 1px solid rgba(231,76,60,0.35); border-radius: 8px;

@@ -9,7 +9,7 @@
     "build:vite": "vite build",
     "start": "node scripts/start.cjs",
     "run": "node scripts/start.cjs",
-    "test": "node tests/zip-paths.test.cjs",
+    "test": "node tests/zip-paths.test.cjs && node tests/crypto.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
