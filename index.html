@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MyDiary</title>
+  <script>
+    // 在 Vue 应用加载前，把 localStorage 数据暴露到 window.__MYDIARY_DATA__
+    window.__MYDIARY_DATA__ = null
+    var _mydiaryRestored = false
+    ;(function () {
+      var raw = null
+      try {
+        raw = window.localStorage ? window.localStorage.getItem('mydiary-browser-data') : null
+      } catch (e) {}
+      if (raw) {
+        try {
+          window.__MYDIARY_DATA__ = JSON.parse(raw)
+          _mydiaryRestored = true
+        } catch (e) {}
+      }
+      // 标记脚本已执行
+      window.__MYDIARY_BOOTSTRAP_DONE__ = true
+    })()
+  </script>
 </head>
 <body>
   <div id="app"></div>

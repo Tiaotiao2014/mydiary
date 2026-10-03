@@ -1,10 +1,11 @@
 <template>
-  <div :class="['app-root', { 'dark-mode': isDark }]">
+  <div :class="['app-root', { 'dark-mode': ui.isDark }]">
     <div class="topbar">
       <span class="app-title" @click="router.push('/')">MyDiary</span>
       <div class="topbar-actions">
         <button class="btn btn-ghost-top" @click="router.push('/trash')" title="回收站">🗑</button>
-        <button class="btn btn-ghost-top" @click="toggleTheme">{{ isDark ? '☀️' : '🌙' }}</button>
+        <button class="btn btn-ghost-top" @click="ui.toggleTheme()" title="切换深色/浅色主题">{{ ui.isDark ? '☀️' : '🌙' }}</button>
+        <button class="btn btn-ghost-top" @click="router.push('/settings')" title="设置：主题、备份与迁移、主密码">⚙ 设置</button>
         <button class="btn btn-primary" @click="router.push('/edit/new')">＋ 新建</button>
       </div>
     </div>
@@ -15,30 +16,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUiStore } from '@/stores/ui'
 
 const router = useRouter()
-const isDark = ref(false)
+const ui = useUiStore()
 
-onMounted(async () => {
-  if (window.electronAPI) {
-    const config = await window.electronAPI.getConfig()
-    if (config?.theme === 'dark') isDark.value = true
-    else if (config?.theme === 'system') {
-      const q = window.matchMedia('(prefers-color-scheme: dark)')
-      isDark.value = q.matches
-      q.addEventListener('change', (e) => { isDark.value = e.matches })
-    }
-  }
-})
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  if (window.electronAPI) {
-    window.electronAPI.setConfig({ theme: isDark.value ? 'dark' : 'light' })
-  }
-}
+onMounted(() => ui.loadTheme())
 </script>
 
 <style>
@@ -83,5 +68,9 @@ body {
   padding: 6px 12px; cursor: pointer; font-size: 14px;
 }
 .btn-ghost-top:hover { opacity: 1; }
+/* 深色背景上，0.6 的不透明度会把图标线条冲淡成中灰（约 rgb(145,145,148)），
+   细线条在近黑底上很难辨认。这里单独提高深色模式下的对比度。 */
+.dark-mode .btn-ghost-top { opacity: 0.92; border-color: #3d3d5c; }
+.dark-mode .btn-ghost-top:hover { opacity: 1; }
 </style>
 

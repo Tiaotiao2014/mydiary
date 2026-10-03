@@ -1,6 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+/**
+ * 送往 IPC 之前，必须把 Vue 响应式对象（Proxy）转成纯数据。
+ *
+ * 原因：contextBridge 暴露的 API 在参数跨出主世界时就要做克隆，
+ * 而 Proxy 无法被克隆，会抛 "An object could not be cloned."。
+ * 该错误若无人 catch，会变成未处理的 Promise 异常，
+ * 导致调用链静默中断（典型症状：按钮点了没反应；保存看着成功其实没写盘）。
+ *
+ * 注意：不能放在 preload 里处理 —— 参数在进入 preload 前就已跨过边界。
+ */
+function toPlain(value) {
+  if (value === null || typeof value !== 'object') return value
+  try {
+    return JSON.parse(JSON.stringify(value))
+  } catch {
+    return value
+  }
+}
+
 function generateId() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0
@@ -9,26 +28,47 @@ function generateId() {
   })
 }
 
-// ── 浏览器 fallback：模块级内存持久化 ─────────────────────
-// iab 中 localStorage 可能不可用，用模块级变量兜底
-const browserDB = { diaries: [], trash: [] }
+// ── 浏览器 fallback 持久化 ────────────────────────────────
+// 数据优先级：window.__MYDIARY_DATA__（index.html 注入）> localStorage > 模块内存
 const LS_KEY = 'mydiary-browser-data'
 
-function browserLoad() {
-  try {
-    if (typeof localStorage !== 'undefined' && localStorage) {
-      const raw = localStorage.getItem(LS_KEY)
-      if (raw) {
-        const data = JSON.parse(raw)
-        browserDB.diaries = data.diaries || []
-        browserDB.trash = data.trash || []
-        return
+function initBrowserDB() {
+  let diaries = []
+  let trash = []
+  // 1. 从 index.html 注入的全局变量读取（刷新前保存的数据）
+  if (typeof window !== 'undefined' && window.__MYDIARY_DATA__) {
+    const d = window.__MYDIARY_DATA__
+    diaries = d.diaries || []
+    trash = d.trash || []
+  } else {
+    // 2. 从 localStorage 读取
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        const raw = localStorage.getItem(LS_KEY)
+        if (raw) {
+          const d = JSON.parse(raw)
+          diaries = d.diaries || []
+          trash = d.trash || []
+        }
       }
-    }
-  } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
+  return { diaries, trash }
 }
 
-function browserSave() {
+// 模块级单例（同一页面生命周期内共享）
+const _initial = initBrowserDB()
+const browserDB = {
+  diaries: _initial.diaries,
+  trash: _initial.trash,
+}
+
+function persistBrowserData() {
+  // 保存回 index.html 的全局变量（刷新后恢复用）
+  if (typeof window !== 'undefined') {
+    try { window.__MYDIARY_DATA__ = { diaries: browserDB.diaries, trash: browserDB.trash } } catch { /* ignore */ }
+  }
+  // 保存到 localStorage（如果可用）
   try {
     if (typeof localStorage !== 'undefined' && localStorage) {
       localStorage.setItem(LS_KEY, JSON.stringify(browserDB))
@@ -52,7 +92,6 @@ export const useDiaryStore = defineStore('diary', () => {
     if (isElectron()) {
       libraryPath.value = await window.electronAPI.getLibraryPath()
     } else {
-      browserLoad()
       diaries.value = browserDB.diaries
       trash.value = browserDB.trash
     }
@@ -87,19 +126,18 @@ export const useDiaryStore = defineStore('diary', () => {
     }
 
     if (isElectron()) {
-      const saved = await window.electronAPI.createDiary(diary)
+      const saved = await window.electronAPI.createDiary(toPlain(diary))
       if (saved) {
         diaries.value = [saved, ...diaries.value]
         currentDiary.value = saved
         return saved
       }
     }
-    // 浏览器环境
     browserDB.diaries.unshift(diary)
     diaries.value = browserDB.diaries
     trash.value = browserDB.trash
     currentDiary.value = diary
-    browserSave()
+    persistBrowserData()
     return diary
   }
 
@@ -116,7 +154,7 @@ export const useDiaryStore = defineStore('diary', () => {
   async function saveDiary(diary) {
     if (!diary) return
     if (isElectron()) {
-      await window.electronAPI.saveDiary({ date: diary.date, id: diary.id, data: diary })
+      await window.electronAPI.saveDiary(toPlain({ date: diary.date, id: diary.id, data: diary }))
     }
     diary.updatedAt = new Date().toISOString()
     const idx = browserDB.diaries.findIndex(d => d.id === diary.id)
@@ -126,7 +164,7 @@ export const useDiaryStore = defineStore('diary', () => {
     if (currentDiary.value?.id === diary.id) {
       currentDiary.value = { ...diary }
     }
-    if (!isElectron()) browserSave()
+    if (!isElectron()) persistBrowserData()
   }
 
   async function deleteDiary(date, id) {
@@ -141,7 +179,7 @@ export const useDiaryStore = defineStore('diary', () => {
       browserDB.diaries = browserDB.diaries.filter(d => !(d.date === date && d.id === id))
       diaries.value = browserDB.diaries
       trash.value = browserDB.trash
-      browserSave()
+      persistBrowserData()
     }
     if (currentDiary.value?.id === id) currentDiary.value = null
   }
@@ -150,7 +188,6 @@ export const useDiaryStore = defineStore('diary', () => {
     if (isElectron()) {
       trash.value = await window.electronAPI.listTrash()
     } else {
-      browserLoad()
       trash.value = browserDB.trash
       diaries.value = browserDB.diaries
     }
@@ -170,7 +207,7 @@ export const useDiaryStore = defineStore('diary', () => {
       browserDB.diaries.unshift(item)
       trash.value = browserDB.trash
       diaries.value = browserDB.diaries
-      browserSave()
+      persistBrowserData()
     }
   }
 
@@ -180,7 +217,7 @@ export const useDiaryStore = defineStore('diary', () => {
     } else {
       browserDB.trash = browserDB.trash.filter(d => !(d.date === date && d.id === id))
       trash.value = browserDB.trash
-      browserSave()
+      persistBrowserData()
     }
   }
 
@@ -190,7 +227,7 @@ export const useDiaryStore = defineStore('diary', () => {
     } else {
       browserDB.trash = []
       trash.value = []
-      browserSave()
+      persistBrowserData()
     }
   }
 

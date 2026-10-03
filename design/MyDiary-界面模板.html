@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#F6F1E9" id="metaThemeColor">
+<title>MyDiary · 玻璃拟态双主题界面模板</title>
+<script>
+/* ===== 防闪烁：先于渲染确定主题 ===== */
+(function () {
+  var t;
+  try { t = localStorage.getItem('mydiary-theme'); } catch (e) {}
+  if (t !== 'light' && t !== 'dark') {
+    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', t);
+  var mc = document.getElementById('metaThemeColor');
+  if (mc) mc.setAttribute('content', t === 'dark' ? '#000000' : '#F6F1E9');
+})();
+</script>
+<style>
+/* ============================================================
+   MyDiary 设计令牌 —— 浅色「治愈系书房」 / 深色「黑客帝国终端」
+   ============================================================ */
+:root {
+  /* 字体 */
+  --font-ui: "Noto Sans SC", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* 间距（4px 基准） */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-12: 48px;
+
+  /* 尺寸 */
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-base: #F6F1E9;
+  --bg-deep: #EFE8DC;
+  --surface-solid: #FFFDF8;
+  --surface-glass: rgba(255, 253, 248, .62);
+  --surface-glass-strong: rgba(255, 253, 248, .82);
+  --border-glass: rgba(255, 255, 255, .65);
+  --border-soft: rgba(139, 120, 98, .14);
+  --text-1: #3B3630;
+  --text-2: #6E665C;
+  --text-3: #9A938B;
+  --brand: #4A7866;            /* 主按钮底（白字 AA） */
+  --brand-500: #6B9A86;
+  --brand-hover: #3F6A59;
+  --brand-tint: #E7F0EB;
+  --brand-glow: rgba(107, 154, 134, .35);
+  --accent: #E9B48E;
+  --accent-deep: #B26135;
+  --success: #2E7D5B;  --success-bg: #E3F1EA;
+  --warning: #8C6512;  --warning-bg: #F7EDD8;
+  --error:   #B3402F;  --error-bg:   #F8E7E4;
+  --info:    #3D68A8;  --info-bg:    #E4EDF8;
+  --focus-ring: #4A7866;
+  --overlay: rgba(60, 50, 40, .35);
+  --radius-btn: 14px; --radius-card: 20px; --radius-modal: 28px;
+  --shadow-card: 0 8px 24px rgba(120, 95, 70, .10);
+  --shadow-card-hover: 0 14px 32px rgba(120, 95, 70, .16);
+  --shadow-btn: 0 4px 12px rgba(74, 120, 102, .25);
+  --glass-blur: blur(18px) saturate(140%);
+  --input-bg: #EFE8DC;
+  --scrim: rgba(246, 241, 233, .55);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-base: #000000;
+  --bg-deep: #030A04;
+  --surface-solid: #04120A;
+  --surface-glass: rgba(2, 16, 7, .60);
+  --surface-glass-strong: rgba(2, 20, 8, .82);
+  --border-glass: rgba(0, 255, 65, .10);
+  --border-soft: rgba(0, 255, 65, .22);
+  --text-1: #C8F7D2;
+  --text-2: #86C495;
+  --text-3: #4F8F5F;
+  --brand: #00FF41;            /* 主品牌绿（黑字 AAA） */
+  --brand-500: #00FF41;
+  --brand-hover: #29FF62;
+  --brand-tint: rgba(0, 255, 65, .10);
+  --brand-glow: rgba(0, 255, 65, .30);
+  --accent: #57C7FF;
+  --accent-deep: #57C7FF;
+  --success: #37FF8B;  --success-bg: rgba(55, 255, 139, .12);
+  --warning: #FFD24D;  --warning-bg: rgba(255, 210, 77, .12);
+  --error:   #FF6057;  --error-bg:   rgba(255, 96, 87, .12);
+  --info:    #57C7FF;  --info-bg:    rgba(87, 199, 255, .12);
+  --focus-ring: #00FF41;
+  --overlay: rgba(0, 8, 2, .70);
+  --radius-btn: 10px; --radius-card: 14px; --radius-modal: 20px;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, .5), 0 0 16px rgba(0, 255, 65, .06);
+  --shadow-card-hover: 0 12px 28px rgba(0, 0, 0, .6), 0 0 22px rgba(0, 255, 65, .12);
+  --shadow-btn: 0 4px 16px rgba(0, 255, 65, .28);
+  --glass-blur: blur(18px) saturate(120%);
+  --input-bg: rgba(0, 30, 12, .40);
+  --scrim: rgba(0, 0, 0, .55);
+}
+
+/* ============ 基础 ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  font-size: 14px; line-height: 22px;
+  color: var(--text-1);
+  background: var(--bg-base);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--brand-tint); }
+button { font-family: inherit; }
+input, textarea { font-family: inherit; color: var(--text-1); }
+
+/* 主题切换过渡（切换时由 JS 临时挂载） */
+html.theme-transition, html.theme-transition * {
+  transition: background-color .35s ease, color .35s ease,
+              border-color .35s ease, box-shadow .35s ease, opacity .35s ease !important;
+}
+
+/* ============ L0 背景层 ============ */
+#bgLayer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+/* 浅色：柔光色块 */
+.orb { position: absolute; width: 55vw; height: 55vw; border-radius: 50%; filter: blur(80px); opacity: .6; }
+.orb-1 { background: #F5D5C0; top: -20%; left: -10%; animation: drift1 80s ease-in-out infinite alternate; }
+.orb-2 { background: #D6E5D8; bottom: -25%; right: -15%; animation: drift2 90s ease-in-out infinite alternate; }
+.orb-3 { background: #D8E4EF; top: 30%; right: 20%; width: 40vw; height: 40vw; opacity: .5; animation: drift3 70s ease-in-out infinite alternate; }
+@keyframes drift1 { to { transform: translate(8vw, 6vh) scale(1.08); } }
+@keyframes drift2 { to { transform: translate(-6vw, -8vh) scale(.94); } }
+@keyframes drift3 { to { transform: translate(-5vw, 5vh) scale(1.1); } }
+/* 深色：代码雨画布 + 扫描线 */
+#rainCanvas { position: absolute; inset: 0; opacity: .32; display: none; }
+.scanlines {
+  position: absolute; inset: 0; display: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,255,65,.04) 0 1px, transparent 1px 3px);
+}
+.vignette { position: absolute; inset: 0; display: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+[data-theme="dark"] #rainCanvas { display: block; }
+[data-theme="dark"] .scanlines, [data-theme="dark"] .vignette { display: block; }
+[data-theme="dark"] .orb { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none !important; }
+  html.theme-transition, html.theme-transition * { transition: none !important; }
+}
+
+/* ============ 玻璃基元 ============ */
+.glass {
+  background: var(--surface-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--border-glass);
+  border-radius: var(--radius-card);
+}
+.glass-strong {
+  background: var(--surface-glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card), inset 0 1px 0 var(--border-glass);
+}
+
+/* ============ 应用骨架 ============ */
+#app { position: relative; z-index: 10; display: flex; height: 100vh; }
+
+/* ---- 侧边导航 ---- */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; height: 100%;
+  display: flex; flex-direction: column;
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--surface-glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--border-soft);
+  box-shadow: inset -1px 0 0 var(--border-glass);
+}
+.brand { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-5); }
+.brand-logo {
+  width: 36px; height: 36px; border-radius: var(--radius-btn);
+  display: grid; place-items: center;
+  background: var(--brand); color: #fff; font-weight: 700; font-size: 15px;
+  box-shadow: var(--shadow-btn);
+}
+[data-theme="dark"] .brand-logo { color: #001B08; }
+.brand-name { font-size: 16px; font-weight: 700; letter-spacing: .01em; }
+[data-theme="dark"] .brand-name { font-family: var(--font-mono); letter-spacing: .04em; color: var(--brand); }
+.brand-sub { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+
+.nav { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; overflow-y: auto; }
+.nav-label { font-size: 11px; color: var(--text-3); letter-spacing: .08em; padding: var(--sp-4) var(--sp-3) var(--sp-1); font-family: var(--font-mono); }
+.nav-item {
+  display: flex; align-items: center; gap: var(--sp-3);
+  height: 40px; padding: 0 var(--sp-3);
+  border: none; background: transparent; color: var(--text-2);
+  border-radius: var(--radius-btn); cursor: pointer;
+  font-size: 14px; text-align: left; position: relative;
+  transition: background-color .18s, color .18s;
+}
+.nav-item .ico { width: 20px; text-align: center; font-size: 15px; flex-shrink: 0; }
+.nav-item:hover { background: var(--brand-tint); color: var(--text-1); }
+.nav-item.active { background: var(--brand-tint); color: var(--text-1); font-weight: 600; }
+.nav-item.active::before {
+  content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px;
+  border-radius: 3px; background: var(--brand);
+}
+.nav-item.active .ico { color: var(--brand); }
+.nav-badge { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+/* ---- 主区域 ---- */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: var(--topbar-h); flex-shrink: 0;
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: 0 var(--sp-6);
+  background: var(--surface-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: inset 0 1px 0 var(--border-glass);
+}
+.topbar-title { font-size: 16px; font-weight: 600; }
+[data-theme="dark"] .topbar-title { letter-spacing: .02em; }
+.topbar-spacer { flex: 1; }
+.content { flex: 1; overflow-y: auto; padding: var(--sp-8) var(--sp-12); }
+.view { display: none; max-width: 1200px; margin: 0 auto; animation: viewIn .25s ease; }
+.view.active { display: block; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .view { animation: none; } }
+
+/* ============ 组件：按钮 ============ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  height: 40px; padding: 0 var(--sp-5);
+  border-radius: var(--radius-btn); border: 1px solid transparent;
+  font-size: 14px; font-weight: 500; cursor: pointer; user-select: none;
+  transition: background-color .18s, box-shadow .18s, transform .12s, border-color .18s, filter .18s;
+}
+.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: var(--shadow-btn); }
+[data-theme="dark"] .btn-primary { color: #001B08; font-weight: 600; }
+.btn-primary:hover:not(:disabled) { background: var(--brand-hover); transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--surface-glass); color: var(--text-1); border-color: var(--border-soft);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--border-glass);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--brand-tint); border-color: var(--brand-500); }
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-ghost:hover:not(:disabled) { background: var(--brand-tint); color: var(--text-1); }
+.btn-danger { background: var(--error); color: #fff; }
+[data-theme="dark"] .btn-danger { color: #001B08; }
+.btn-danger:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-sm { height: 32px; padding: 0 var(--sp-4); font-size: 13px; }
+.btn-lg { height: 44px; padding: 0 var(--sp-6); font-size: 15px; }
+.btn-pill { border-radius: 999px; }
+.btn-icon {
+  width: 36px; height: 36px; padding: 0; border-radius: var(--radius-btn);
+  background: transparent; color: var(--text-2); border: none; cursor: pointer;
+  display: inline-grid; place-items: center; font-size: 15px;
+  transition: background-color .18s, color .18s;
+}
+.btn-icon:hover { background: var(--brand-tint); color: var(--text-1); }
+.btn-icon:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============ 组件：输入框 ============ */
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.field-label { font-size: 13px; font-weight: 500; color: var(--text-1); }
+.field-label .req { color: var(--error); }
+.field-hint { font-size: 12px; color: var(--text-3); }
+.field-error { font-size: 12px; color: var(--error); }
+.input, .textarea, .select {
+  height: 40px; padding: 0 var(--sp-3);
+  border-radius: 10px; border: 1.5px solid transparent;
+  background: var(--input-bg); color: var(--text-1);
+  font-size: 14px; outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+.textarea { height: auto; min-height: 96px; padding: var(--sp-3); resize: vertical; line-height: 24px; }
+.input::placeholder, .textarea::placeholder { color: var(--text-3); }
+.input:hover, .textarea:hover, .select:hover { border-color: var(--border-soft); }
+.input:focus, .textarea:focus, .select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+.input.error, .textarea.error { border-color: var(--error); }
+.input.error:focus { box-shadow: 0 0 0 3px var(--error-bg); }
+.input:disabled, .textarea:disabled { opacity: .45; cursor: not-allowed; }
+.input.mono { font-family: var(--font-mono); letter-spacing: .06em; }
+.search-wrap { position: relative; }
+.search-wrap .input { padding-left: 36px; width: 260px; }
+.search-ico { position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 14px; pointer-events: none; }
+
+/* ============ 组件：卡片 ============ */
+.card { padding: var(--sp-4); transition: box-shadow .2s, transform .2s; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--sp-6); }
+.diary-date { font-family: var(--font-mono); font-size: 12px; color: var(--brand-500); letter-spacing: .04em; }
+[data-theme="dark"] .diary-date { color: var(--brand); }
+.diary-title { font-size: 16px; font-weight: 600; margin: var(--sp-1) 0 var(--sp-2); }
+.diary-excerpt { font-size: 13px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.diary-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); flex-wrap: wrap; }
+.stat-card { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-5); }
+.stat-num { font-family: var(--font-mono); font-size: 28px; font-weight: 700; line-height: 36px; }
+[data-theme="dark"] .stat-num { color: var(--brand); text-shadow: 0 0 12px var(--brand-glow); }
+.stat-label { font-size: 13px; color: var(--text-2); }
+
+/* ============ 组件：标签 / 开关 / 分段 ============ */
+.tag {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+  background: var(--brand-tint); color: var(--brand); border: 1px solid var(--border-soft);
+}
+[data-theme="dark"] .tag { font-family: var(--font-mono); }
+.tag.t-success { background: var(--success-bg); color: var(--success); }
+.tag.t-warning { background: var(--warning-bg); color: var(--warning); }
+.tag.t-error { background: var(--error-bg); color: var(--error); }
+.tag.t-info { background: var(--info-bg); color: var(--info); }
+.switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; z-index: 1; }
+.switch-track {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--input-bg); border: 1px solid var(--border-soft);
+  transition: background-color .2s;
+}
+.switch-track::after {
+  content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--text-3); transition: transform .2s, background-color .2s;
+}
+.switch input:checked + .switch-track { background: var(--brand); border-color: transparent; }
+.switch input:checked + .switch-track::after { transform: translateX(18px); background: #fff; }
+[data-theme="dark"] .switch input:checked + .switch-track::after { background: #001B08; }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.segmented {
+  display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-btn);
+  background: var(--input-bg); border: 1px solid var(--border-soft);
+}
+.seg-btn {
+  height: 32px; padding: 0 var(--sp-4); border: none; border-radius: 8px;
+  background: transparent; color: var(--text-2); font-size: 13px; cursor: pointer;
+  transition: background-color .18s, color .18s;
+}
+.seg-btn:hover { color: var(--text-1); }
+.seg-btn.active { background: var(--brand); color: #fff; font-weight: 600; }
+[data-theme="dark"] .seg-btn.active { color: #001B08; }
+.seg-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ============ 组件：表格 ============ */
+.table-wrap { border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); border: 1px solid var(--border-soft); background: var(--surface-solid); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left; padding: var(--sp-3) var(--sp-4);
+  color: var(--text-2); font-size: 12px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-mono);
+}
+tbody td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border-soft); height: 48px; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background-color .15s; }
+tbody tr:hover { background: var(--brand-tint); }
+td.mono, .cell-mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* ============ 组件：弹窗 ============ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--overlay);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display: none; align-items: center; justify-content: center; padding: var(--sp-6);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  width: min(480px, 100%); padding: var(--sp-5);
+  border-radius: var(--radius-modal);
+  background: var(--surface-glass-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card-hover), inset 0 1px 0 var(--border-glass);
+  animation: modalIn .2s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+.modal-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.modal-title { font-size: 18px; font-weight: 600; flex: 1; }
+.modal-body { color: var(--text-2); font-size: 14px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: var(--sp-3); margin-top: var(--sp-5); }
+
+/* ============ 组件：Toast ============ */
+#toastHost { position: fixed; right: var(--sp-6); bottom: var(--sp-6); z-index: 200; display: flex; flex-direction: column; gap: var(--sp-2); }
+.toast {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-width: 280px; max-width: 380px; padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-card);
+  background: var(--surface-glass-strong);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  border: 1px solid var(--border-soft); box-shadow: var(--shadow-card-hover);
+  font-size: 13px; animation: toastIn .25s ease;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.toast.out { opacity: 0; transform: translateX(16px); transition: all .25s; }
+.toast .t-ico { flex-shrink: 0; font-size: 15px; }
+.toast.t-success .t-ico { color: var(--success); }
+.toast.t-error .t-ico { color: var(--error); }
+.toast.t-info .t-ico { color: var(--info); }
+
+/* ============ 编辑器页 ============ */
+.editor-toolbar {
+  display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  padding: var(--sp-2); margin-bottom: var(--sp-6);
+}
+.editor-toolbar .btn-icon { width: 32px; height: 32px; font-size: 13px; }
+.editor-toolbar .tb-bold { font-weight: 700; }
+.editor-toolbar .tb-italic { font-style: italic; }
+.editor-toolbar .tb-strike { text-decoration: line-through; }
+.tb-sep { width: 1px; height: 20px; background: var(--border-soft); margin: 0 var(--sp-2); }
+.editor-title {
+  width: 100%; border: none; background: transparent; outline: none;
+  font-size: 22px; font-weight: 600; line-height: 30px; color: var(--text-1);
+  padding: var(--sp-2) 0; margin-bottom: var(--sp-4);
+}
+.editor-title::placeholder { color: var(--text-3); }
+.editor-body {
+  width: 100%; max-width: 720px; margin: 0 auto; display: block;
+  min-height: 46vh; padding: var(--sp-4); border: none;
+  background: var(--surface-glass); border-radius: var(--radius-card);
+  border: 1px solid var(--border-soft);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  font-size: 16px; line-height: 28px; outline: none; resize: vertical;
+}
+.editor-body:focus { border-color: var(--brand-500); }
+.editor-status {
+  display: flex; align-items: center; gap: var(--sp-4); justify-content: flex-end;
+  margin-top: var(--sp-4); font-size: 12px; color: var(--text-3); font-family: var(--font-mono);
+}
+.save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+/* ============ 统计页 ============ */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-6); margin-bottom: var(--sp-6); }
+.chart-card { padding: var(--sp-5); }
+.chart-title { font-size: 14px; font-weight: 600; margin-bottom: var(--sp-4); }
+.bars { display: flex; align-items: flex-end; gap: var(--sp-3); height: 140px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); height: 100%; justify-content: flex-end; }
+.bar {
+  width: 100%; max-width: 36px; border-radius: 6px 6px 2px 2px;
+  background: var(--brand-500); opacity: .85; position: relative;
+  transition: opacity .18s;
+}
+.bar:hover { opacity: 1; }
+[data-theme="dark"] .bar { background: linear-gradient(to top, rgba(0,255,65,.25), var(--brand)); box-shadow: 0 0 10px var(--brand-glow); }
+.bar-label { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+
+/* ============ 设置页 ============ */
+.settings-group { padding: var(--sp-5); margin-bottom: var(--sp-6); }
+.settings-group h3 { font-size: 15px; font-weight: 600; margin-bottom: var(--sp-2); }
+.settings-group .desc { font-size: 13px; color: var(--text-2); margin-bottom: var(--sp-4); }
+.setting-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) 0; }
+.setting-row .info { flex: 1; }
+.setting-row .info .name { font-size: 14px; font-weight: 500; }
+.setting-row .info .hint { font-size: 12px; color: var(--text-3); }
+
+/* ============ 锁定页 ============ */
+#view-lock { display: none; }
+#view-lock.active { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--topbar-h) - 64px); }
+.lock-card { width: min(400px, 100%); padding: var(--sp-12) var(--sp-8); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); }
+.lock-logo {
+  width: 56px; height: 56px; border-radius: var(--radius-modal);
+  background: var(--brand); color: #fff; display: grid; place-items: center;
+  font-size: 22px; font-weight: 700; box-shadow: var(--shadow-btn);
+}
+[data-theme="dark"] .lock-logo { color: #001B08; text-shadow: none; }
+.lock-title { font-size: 18px; font-weight: 600; }
+[data-theme="dark"] .lock-title { font-family: var(--font-mono); letter-spacing: .06em; color: var(--brand); }
+.lock-sub { font-size: 13px; color: var(--text-2); margin-bottom: var(--sp-2); }
+.lock-card .input { width: 100%; text-align: center; }
+
+/* ============ 组件总览页 ============ */
+.demo-section { margin-bottom: var(--sp-12); }
+.demo-section > h2 { font-size: 18px; font-weight: 600; margin-bottom: var(--sp-2); }
+.demo-section > .desc { color: var(--text-2); font-size: 13px; margin-bottom: var(--sp-5); }
+.demo-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-4); }
+.demo-row .label { width: 88px; flex-shrink: 0; font-size: 12px; color: var(--text-3); font-family: var(--font-mono); }
+.demo-panel { padding: var(--sp-5); }
+
+/* 空状态 */
+.empty { text-align: center; padding: var(--sp-12) var(--sp-6); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+.empty-ico { font-size: 32px; opacity: .6; }
+.empty-title { font-size: 20px; font-weight: 600; }
+.empty-desc { font-size: 13px; color: var(--text-2); }
+
+/* 主题切换按钮 */
+.theme-toggle {
+  display: flex; align-items: center; gap: var(--sp-3);
+  height: 40px; width: 100%; padding: 0 var(--sp-3);
+  border-radius: var(--radius-btn); border: 1px solid var(--border-soft);
+  background: var(--surface-glass); color: var(--text-1);
+  font-size: 13px; cursor: pointer;
+  transition: border-color .18s, box-shadow .18s;
+}
+.theme-toggle:hover { border-color: var(--brand-500); box-shadow: 0 0 12px var(--brand-glow); }
+.theme-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.theme-toggle .state { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+.sidebar-foot { display: flex; flex-direction: column; gap: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--border-soft); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-500); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 响应式 */
+@media (max-width: 1024px) {
+  .content { padding: var(--sp-6); }
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<!-- L0 背景层：浅色=柔光色块 / 深色=代码雨+扫描线 -->
+<div id="bgLayer" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <canvas id="rainCanvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+</div>
+
+<div id="app">
+  <!-- ================= 侧边导航 ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">日</div>
+      <div>
+        <div class="brand-name">MyDiary</div>
+        <div class="brand-sub">local · private · yours</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-pill" style="width:100%; margin-bottom: var(--sp-5);" onclick="toast('info', '新建日记（演示）')">
+      <span aria-hidden="true">＋</span> 新建日记
+    </button>
+
+    <nav class="nav" aria-label="主导航">
+      <div class="nav-label">主导航</div>
+      <button class="nav-item active" data-view="list" onclick="switchView('list')"><span class="ico" aria-hidden="true">◎</span>今日</button>
+      <button class="nav-item" data-view="all" onclick="switchView('all')"><span class="ico" aria-hidden="true">▤</span>全部日记<span class="nav-badge">128</span></button>
+      <button class="nav-item" data-view="editor" onclick="switchView('editor')"><span class="ico" aria-hidden="true">✎</span>编辑器</button>
+      <button class="nav-item" data-view="stats" onclick="switchView('stats')"><span class="ico" aria-hidden="true">◫</span>统计</button>
+      <button class="nav-item" data-view="components" onclick="switchView('components')"><span class="ico" aria-hidden="true">◳</span>组件总览</button>
+      <div class="nav-label">库</div>
+      <button class="nav-item" data-view="trash" onclick="switchView('trash')"><span class="ico" aria-hidden="true">⌫</span>回收站<span class="nav-badge">3</span></button>
+      <div class="nav-label">通用</div>
+      <button class="nav-item" data-view="settings" onclick="switchView('settings')"><span class="ico" aria-hidden="true">⚙</span>设置</button>
+      <button class="nav-item" data-view="lock" onclick="switchView('lock')"><span class="ico" aria-hidden="true">🔐</span>锁定页演示</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <button class="theme-toggle" id="themeToggle" aria-pressed="false" aria-label="切换到深色主题" onclick="toggleTheme()">
+        <span id="themeToggleIcon" aria-hidden="true">☀</span>
+        <span id="themeToggleText">浅色 · 治愈书房</span>
+        <span class="state" id="themeToggleState">LIGHT</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= 主区域 ================= -->
+  <div class="main">
+    <header class="topbar">
+      <span class="topbar-title" id="topbarTitle">今日</span>
+      <span class="topbar-spacer"></span>
+      <div class="search-wrap">
+        <span class="search-ico" aria-hidden="true">⌕</span>
+        <input class="input" type="search" placeholder="搜索标题、正文、标签…" aria-label="全文搜索">
+      </div>
+      <button class="btn-icon" aria-label="导出" onclick="toast('success', '已导出当前视图（演示）')">↧</button>
+    </header>
+
+    <main class="content" id="content">
+
+      <!-- ========== 视图：今日（日记列表） ========== -->
+      <section class="view active" id="view-list" role="region" aria-label="今日日记">
+        <div class="card-grid">
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-10-02 · 星期五</div>
+            <h3 class="diary-title">玻璃拟态设计定稿</h3>
+            <p class="diary-excerpt">今天把双主题的设计令牌全部敲定了：浅色是奶油暖白配鼠尾草绿，深色是纯黑配荧光绿。切换的那一瞬间，像是白天和夜晚在同一块玻璃背后交替点亮…</p>
+            <div class="diary-foot">
+              <span class="tag">#设计</span><span class="tag">#心流</span>
+              <span class="nav-badge" style="margin-left:auto">1,024 字</span>
+            </div>
+          </article>
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-10-01 · 星期四</div>
+            <h3 class="diary-title">国庆第一天</h3>
+            <p class="diary-excerpt">上午整理了书房，把旧日记本一本本码好。午后下了点小雨，泡了壶茶，把 MyDiary 的加密模块跑通了全部测试用例，AES-256-GCM 的性能比预想好…</p>
+            <div class="diary-foot">
+              <span class="tag">#日常</span>
+              <span class="nav-badge" style="margin-left:auto">856 字</span>
+            </div>
+          </article>
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-09-30 · 星期三</div>
+            <h3 class="diary-title">九月复盘</h3>
+            <p class="diary-excerpt">这个月写了 26 篇日记，连续记录 41 天。读完了《夜晚的潜水艇》，最喜欢〈音乐家〉那一篇。十月的目标：每天至少三百字，周末去一次郊外…</p>
+            <div class="diary-foot">
+              <span class="tag">#复盘</span><span class="tag t-info">#阅读</span>
+              <span class="nav-badge" style="margin-left:auto">632 字</span>
+            </div>
+          </article>
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-09-28 · 星期一</div>
+            <h3 class="diary-title">雨夜加班记</h3>
+            <p class="diary-excerpt">深色主题的代码雨调到 0.32 透明度之后，终于不抢正文的注意力了。凌晨一点保存关机，楼下便利店的灯还亮着…</p>
+            <div class="diary-foot">
+              <span class="tag t-warning">#加班</span>
+              <span class="nav-badge" style="margin-left:auto">418 字</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ========== 视图：编辑器 ========== -->
+      <section class="view" id="view-editor" role="region" aria-label="日记编辑器">
+        <div class="glass editor-toolbar" role="toolbar" aria-label="格式工具栏">
+          <button class="btn-icon tb-bold" aria-label="加粗">B</button>
+          <button class="btn-icon tb-italic" aria-label="斜体">I</button>
+          <button class="btn-icon tb-strike" aria-label="删除线">S</button>
+          <span class="tb-sep"></span>
+          <button class="btn-icon" aria-label="一级标题">H1</button>
+          <button class="btn-icon" aria-label="二级标题">H2</button>
+          <span class="tb-sep"></span>
+          <button class="btn-icon" aria-label="列表">≡</button>
+          <button class="btn-icon" aria-label="引用">❝</button>
+          <button class="btn-icon" aria-label="代码块" style="font-family:var(--font-mono)">&lt;/&gt;</button>
+          <span class="tb-sep"></span>
+          <button class="btn-icon" aria-label="表格">▦</button>
+          <button class="btn-icon" aria-label="公式" style="font-family:var(--font-mono)">∑</button>
+          <button class="btn-icon" aria-label="图片">▣</button>
+        </div>
+        <input class="editor-title" placeholder="给今天起个名字…" value="玻璃拟态设计定稿" aria-label="日记标题">
+        <textarea class="editor-body" aria-label="日记正文" spellcheck="false">今天把双主题的设计令牌全部敲定了。
+
+浅色主题是「治愈系书房」：奶油暖白的底色上漂着三团柔光，玻璃卡片像蒙了层磨砂的宣纸。深色主题是「终端矩阵」：纯黑背景上，荧光绿的代码雨在玻璃层后面缓缓坠落，扫描线让整个界面像一块正在呼吸的 CRT 屏幕。
+
+写日记的人，白天需要松弛，深夜需要专注。一套结构，两种气质——这就是 MyDiary 的答案。</textarea>
+        <div class="editor-status">
+          <span class="save-dot" aria-hidden="true"></span><span>已自动保存 18:14</span>
+          <span>·</span><span>1,024 字</span>
+        </div>
+      </section>
+
+      <!-- ========== 视图：统计 ========== -->
+      <section class="view" id="view-stats" role="region" aria-label="统计">
+        <div class="stat-row">
+          <div class="glass stat-card"><span class="stat-num">128</span><span class="stat-label">总篇数</span></div>
+          <div class="glass stat-card"><span class="stat-num">41</span><span class="stat-label">连续记录（天）</span></div>
+          <div class="glass stat-card"><span class="stat-num">6,842</span><span class="stat-label">本周字数</span></div>
+        </div>
+        <div class="glass chart-card">
+          <div class="chart-title">本月每日字数</div>
+          <div class="bars" role="img" aria-label="条形图：本月每日字数趋势">
+            <div class="bar-col"><div class="bar" style="height:32%"></div><span class="bar-label">W1</span></div>
+            <div class="bar-col"><div class="bar" style="height:58%"></div><span class="bar-label">W2</span></div>
+            <div class="bar-col"><div class="bar" style="height:44%"></div><span class="bar-label">W3</span></div>
+            <div class="bar-col"><div class="bar" style="height:76%"></div><span class="bar-label">W4</span></div>
+            <div class="bar-col"><div class="bar" style="height:100%"></div><span class="bar-label">本周</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 视图：回收站（表格 + 空状态） ========== -->
+      <section class="view" id="view-trash" role="region" aria-label="回收站">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>标题</th><th>删除日期</th><th>剩余保留</th><th>标签</th><th style="text-align:right">操作</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>草稿：周报节选</td><td class="mono">2026-09-30</td><td>28 天</td><td><span class="tag">#工作</span></td>
+                <td style="text-align:right">
+                  <button class="btn btn-ghost btn-sm" onclick="toast('success', '已恢复「草稿：周报节选」（演示）')">恢复</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="toast('error', '已彻底删除（演示）')">彻底删除</button>
+                </td>
+              </tr>
+              <tr>
+                <td>旧版界面随手记</td><td class="mono">2026-09-21</td><td>19 天</td><td><span class="tag t-info">#设计</span></td>
+                <td style="text-align:right">
+                  <button class="btn btn-ghost btn-sm" onclick="toast('success', '已恢复「旧版界面随手记」（演示）')">恢复</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="toast('error', '已彻底删除（演示）')">彻底删除</button>
+                </td>
+              </tr>
+              <tr>
+                <td>失眠夜的碎碎念</td><td class="mono">2026-09-12</td><td>10 天</td><td><span class="tag t-warning">#日常</span></td>
+                <td style="text-align:right">
+                  <button class="btn btn-ghost btn-sm" onclick="toast('success', '已恢复「失眠夜的碎碎念」（演示）')">恢复</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="toast('error', '已彻底删除（演示）')">彻底删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========== 视图：设置 ========== -->
+      <section class="view" id="view-settings" role="region" aria-label="设置">
+        <div class="glass settings-group">
+          <h3>外观</h3>
+          <p class="desc">主题切换即时生效，并会记住你的选择。</p>
+          <div class="setting-row">
+            <div class="info"><div class="name">界面主题</div><div class="hint">跟随系统时将实时响应系统深浅色变化</div></div>
+            <div class="segmented" role="radiogroup" aria-label="界面主题">
+              <button class="seg-btn" data-theme-mode="light" onclick="setThemeMode('light')">浅色</button>
+              <button class="seg-btn" data-theme-mode="dark" onclick="setThemeMode('dark')">深色</button>
+              <button class="seg-btn active" data-theme-mode="system" onclick="setThemeMode('system')">跟随系统</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="info"><div class="name">背景动效</div><div class="hint">柔光漂移 / 代码雨；关闭后背景静止</div></div>
+            <label class="switch"><input type="checkbox" checked onchange="toggleAmbient(this)"><span class="switch-track"></span></label>
+          </div>
+        </div>
+        <div class="glass settings-group">
+          <h3>安全</h3>
+          <p class="desc">主密码使用 AES-256-GCM + PBKDF2 加密整库。</p>
+          <div class="setting-row">
+            <div class="info"><div class="name">启动时要求主密码</div><div class="hint">锁定页将替代列表页首先出现</div></div>
+            <label class="switch"><input type="checkbox" checked><span class="switch-track"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="info"><div class="name">闲置 15 分钟自动锁定</div></div>
+            <label class="switch"><input type="checkbox"><span class="switch-track"></span></label>
+          </div>
+        </div>
+        <div class="glass settings-group">
+          <h3>存储</h3>
+          <div class="setting-row">
+            <div class="info"><div class="name">日记库位置</div><div class="hint mono" style="font-family:var(--font-mono)">D:\Diaries\（演示）</div></div>
+            <button class="btn btn-secondary btn-sm">更改…</button>
+          </div>
+          <div class="setting-row">
+            <div class="info"><div class="name">导出整库</div><div class="hint">打包为 ZIP，包含 HTML 与附件</div></div>
+            <button class="btn btn-secondary btn-sm">导出</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 视图：锁定页 ========== -->
+      <section class="view" id="view-lock" role="region" aria-label="锁定页">
+        <div class="glass lock-card">
+          <div class="lock-logo">日</div>
+          <div class="lock-title">MyDiary 已锁定</div>
+          <p class="lock-sub">输入主密码以解锁你的日记库</p>
+          <input class="input mono" type="password" placeholder="主密码" aria-label="主密码">
+          <button class="btn btn-primary btn-lg" style="width:100%" onclick="toast('success', '解锁成功（演示），即将返回列表页'); setTimeout(function(){switchView('list');}, 900);">解锁</button>
+        </div>
+      </section>
+
+      <!-- ========== 视图：组件总览 ========== -->
+      <section class="view" id="view-components" role="region" aria-label="组件总览">
+
+        <div class="demo-section">
+          <h2>按钮 Button</h2>
+          <p class="desc">五种变体 × 默认 / 悬停 / 聚焦 / 禁用 / 加载态。悬停上浮 1px 出光晕，禁用 45% 透明度。</p>
+          <div class="glass demo-panel">
+            <div class="demo-row"><span class="label">default</span>
+              <button class="btn btn-primary">写日记</button>
+              <button class="btn btn-secondary">导出</button>
+              <button class="btn btn-ghost">取消</button>
+              <button class="btn btn-danger">删除</button>
+              <button class="btn btn-primary btn-pill">＋ 新建</button>
+              <button class="btn-icon" aria-label="更多">⋯</button>
+            </div>
+            <div class="demo-row"><span class="label">sizes</span>
+              <button class="btn btn-primary btn-lg">大按钮</button>
+              <button class="btn btn-primary">中按钮</button>
+              <button class="btn btn-primary btn-sm">小按钮</button>
+            </div>
+            <div class="demo-row"><span class="label">disabled</span>
+              <button class="btn btn-primary" disabled>写日记</button>
+              <button class="btn btn-secondary" disabled>导出</button>
+              <button class="btn-icon" disabled aria-label="禁用">⋯</button>
+            </div>
+            <div class="demo-row"><span class="label">loading</span>
+              <button class="btn btn-primary"><span class="spinner" aria-hidden="true"></span>保存中…</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h2>输入框 Input</h2>
+          <p class="desc">聚焦出现品牌描边与外光晕；错误态附 12px 错误文案。深色主题下密码框使用等宽字体。</p>
+          <div class="glass demo-panel" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--sp-5);">
+            <div class="field">
+              <label class="field-label" for="d-title">日记标题 <span class="req">*</span></label>
+              <input class="input" id="d-title" placeholder="给今天起个名字…">
+              <span class="field-hint">最多 60 字</span>
+            </div>
+            <div class="field">
+              <label class="field-label" for="d-pwd">主密码</label>
+              <input class="input mono" id="d-pwd" type="password" value="password" aria-describedby="d-pwd-err">
+              <span class="field-error" id="d-pwd-err">主密码需至少 8 位，且包含字母与数字</span>
+            </div>
+            <div class="field">
+              <label class="field-label" for="d-disabled">标签名（禁用态）</label>
+              <input class="input" id="d-disabled" value="不可编辑" disabled>
+              <span class="field-hint">该输入框处于禁用状态</span>
+            </div>
+            <div class="field">
+              <label class="field-label" for="d-summary">今日摘要</label>
+              <textarea class="textarea" id="d-summary" placeholder="两三句话记录此刻…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h2>标签 · 开关 · 分段控件</h2>
+          <div class="glass demo-panel">
+            <div class="demo-row"><span class="label">tags</span>
+              <span class="tag">#设计</span><span class="tag t-success">已同步</span>
+              <span class="tag t-warning">草稿</span><span class="tag t-error">解密失败</span>
+              <span class="tag t-info">#阅读</span>
+            </div>
+            <div class="demo-row"><span class="label">switch</span>
+              <label class="switch"><input type="checkbox" checked><span class="switch-track"></span></label>
+              <label class="switch"><input type="checkbox"><span class="switch-track"></span></label>
+            </div>
+            <div class="demo-row"><span class="label">segmented</span>
+              <div class="segmented" role="radiogroup" aria-label="排序方式">
+                <button class="seg-btn active">按日期</button>
+                <button class="seg-btn">按字数</button>
+                <button class="seg-btn">按标题</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h2>弹窗 Modal 与 Toast</h2>
+          <p class="desc">重玻璃（0.82 不透明度 + 24px 模糊）浮层；Esc 关闭、焦点圈定。Toast 4 秒自动消失。</p>
+          <div class="glass demo-panel demo-row">
+            <button class="btn btn-primary" onclick="openModal()">删除确认弹窗</button>
+            <button class="btn btn-secondary" onclick="toast('success', '日记已保存到本地')">成功 Toast</button>
+            <button class="btn btn-secondary" onclick="toast('error', '主密码错误，请重试')">错误 Toast</button>
+            <button class="btn btn-secondary" onclick="toast('info', '导出完成：mydiary-2026.zip')">信息 Toast</button>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h2>空状态 Empty State</h2>
+          <div class="glass demo-panel">
+            <div class="empty">
+              <div class="empty-ico" aria-hidden="true">◍</div>
+              <div class="empty-title">这里还很安静</div>
+              <div class="empty-desc">写第一篇日记，让它成为这个标签下的起点。</div>
+              <button class="btn btn-primary btn-pill" style="margin-top:var(--sp-2)">＋ 写下第一篇</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========== 视图：全部日记（复用列表 + 筛选） ========== -->
+      <section class="view" id="view-all" role="region" aria-label="全部日记">
+        <div class="demo-row" style="margin-bottom: var(--sp-6)">
+          <span class="tag">#设计</span><span class="tag">#日常</span><span class="tag t-info">#阅读</span>
+          <span class="tag t-warning">#加班</span><span class="tag" style="opacity:.6">＋ 新建标签</span>
+          <span style="flex:1"></span>
+          <div class="segmented"><button class="seg-btn active">按日期</button><button class="seg-btn">按字数</button></div>
+        </div>
+        <div class="card-grid">
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-09-26 · 星期六</div>
+            <h3 class="diary-title">郊外的云</h3>
+            <p class="diary-excerpt">坐了一小时城际大巴去郊外，云低得像要碰到麦田。带的书没翻开几页，倒是拍了很多照片，回程时在车上睡着了…</p>
+            <div class="diary-foot"><span class="tag">#日常</span><span class="nav-badge" style="margin-left:auto">512 字</span></div>
+          </article>
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-09-22 · 星期二</div>
+            <h3 class="diary-title">读《夜晚的潜水艇》</h3>
+            <p class="diary-excerpt">想象力原来可以这样具体：一艘潜水艇在梦境的海沟里航行，博尔赫斯的硬币从甲板落入现实。摘抄了七段…</p>
+            <div class="diary-foot"><span class="tag t-info">#阅读</span><span class="nav-badge" style="margin-left:auto">987 字</span></div>
+          </article>
+          <article class="glass card card-hover" tabindex="0">
+            <div class="diary-date">2026-09-18 · 星期五</div>
+            <h3 class="diary-title">重构了导出模块</h3>
+            <p class="diary-excerpt">把导出逻辑从视图层抽到了 service，单条 HTML 和整库 ZIP 走同一条管道。删掉了三百行重复代码，心情舒畅…</p>
+            <div class="diary-foot"><span class="tag">#设计</span><span class="nav-badge" style="margin-left:auto">743 字</span></div>
+          </article>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= 弹窗 ================= -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <span aria-hidden="true" style="color:var(--error); font-size:18px">⚠</span>
+      <h2 class="modal-title" id="modalTitle">删除这篇日记？</h2>
+      <button class="btn-icon" aria-label="关闭弹窗" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>「玻璃拟态设计定稿」将移入回收站，30 天内可恢复。含附件的日记会一并移入。</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-danger" onclick="closeModal(); toast('error', '已移入回收站（演示）')">移入回收站</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 宿主 -->
+<div id="toastHost" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   主题管理：light / dark / system + 防闪烁 + 过渡 + 代码雨
+   ============================================================ */
+var THEME_KEY = 'mydiary-theme';
+var mql = window.matchMedia('(prefers-color-scheme: dark)');
+var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+var userMode = 'system'; /* light | dark | system */
+
+function resolvedTheme() {
+  if (userMode === 'system') return mql.matches ? 'dark' : 'light';
+  return userMode;
+}
+function applyTheme(t, withTransition) {
+  var root = document.documentElement;
+  if (withTransition) {
+    root.classList.add('theme-transition');
+    setTimeout(function () { root.classList.remove('theme-transition'); }, 450);
+  }
+  root.setAttribute('data-theme', t);
+  var mc = document.getElementById('metaThemeColor');
+  if (mc) mc.setAttribute('content', t === 'dark' ? '#000000' : '#F6F1E9');
+  updateThemeToggleUI(t);
+  updateRain(t);
+}
+function updateThemeToggleUI(t) {
+  var btn = document.getElementById('themeToggle');
+  var icon = document.getElementById('themeToggleIcon');
+  var text = document.getElementById('themeToggleText');
+  var state = document.getElementById('themeToggleState');
+  var dark = t === 'dark';
+  if (btn) {
+    btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+    btn.setAttribute('aria-label', dark ? '切换到浅色主题' : '切换到深色主题');
+  }
+  if (icon) icon.textContent = dark ? '☾' : '☀';
+  if (text) text.textContent = dark ? '深色 · 终端矩阵' : '浅色 · 治愈书房';
+  if (state) state.textContent = dark ? 'DARK' : 'LIGHT';
+}
+function toggleTheme() {
+  var next = resolvedTheme() === 'dark' ? 'light' : 'dark';
+  userMode = next;
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  applyTheme(next, true);
+  syncSettingsSeg(next);
+}
+function setThemeMode(mode) {
+  userMode = mode;
+  try { localStorage.setItem(THEME_KEY, mode === 'system' ? 'system' : mode); } catch (e) {}
+  var t = resolvedTheme();
+  applyTheme(t, true);
+  syncSettingsSeg(t);
+  if (mode === 'system') toast('info', '已跟随系统主题：' + (t === 'dark' ? '深色' : '浅色'));
+}
+function syncSettingsSeg(activeTheme) {
+  var btns = document.querySelectorAll('.seg-btn[data-theme-mode]');
+  var anyActive = false;
+  btns.forEach(function (b) {
+    var m = b.getAttribute('data-theme-mode');
+    var on = (m === userMode) || (userMode === 'system' && m === 'system');
+    b.classList.toggle('active', on);
+    if (on) anyActive = true;
+  });
+  if (!anyActive) {
+    btns.forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-theme-mode') === activeTheme);
+    });
+  }
+}
+/* 系统主题变化联动（仅 system 模式） */
+function onSystemChange() { if (userMode === 'system') applyTheme(resolvedTheme(), true); }
+if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
+else if (mql.addListener) mql.addListener(onSystemChange);
+
+/* 快捷键 Ctrl/Cmd + Shift + L */
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
+    e.preventDefault();
+    toggleTheme();
+  }
+});
+
+/* ---------- 代码雨（仅深色时创建，离开时销毁） ---------- */
+var rainState = { raf: null, cols: [], ctx: null, canvas: null, w: 0, h: 0, running: false, enabled: true };
+var GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ01';
+function startRain() {
+  var canvas = document.getElementById('rainCanvas');
+  if (!canvas || !rainState.enabled || reduceMotion.matches) return;
+  var ctx = canvas.getContext('2d');
+  rainState.canvas = canvas; rainState.ctx = ctx;
+  rainState.w = canvas.width = window.innerWidth;
+  rainState.h = canvas.height = window.innerHeight;
+  var fs = 15, colW = fs + 2;
+  var n = Math.ceil(rainState.w / colW);
+  rainState.cols = [];
+  for (var i = 0; i < n; i++) rainState.cols.push(Math.floor(Math.random() * -80));
+  rainState.running = true;
+  (function draw() {
+    if (!rainState.running) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.075)';
+    ctx.fillRect(0, 0, rainState.w, rainState.h);
+    ctx.font = fs + 'px monospace';
+    for (var i = 0; i < rainState.cols.length; i++) {
+      var x = i * colW, y = rainState.cols[i] * fs;
+      var ch = GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length));
+      ctx.fillStyle = 'rgba(184,255,200,0.9)';
+      ctx.fillText(ch, x, y);
+      ctx.fillStyle = 'rgba(0,255,65,0.45)';
+      ctx.fillText(GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length)), x, y - fs);
+      ctx.fillText(GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length)), x, y - fs * 2);
+      if (y > rainState.h && Math.random() > 0.975) rainState.cols[i] = 0;
+      rainState.cols[i]++;
+    }
+    rainState.raf = requestAnimationFrame(draw);
+  })();
+}
+function stopRain() {
+  rainState.running = false;
+  if (rainState.raf) cancelAnimationFrame(rainState.raf);
+  if (rainState.ctx) rainState.ctx.clearRect(0, 0, rainState.w, rainState.h);
+}
+function updateRain(theme) {
+  if (theme === 'dark') startRain(); else stopRain();
+}
+window.addEventListener('resize', function () {
+  if (rainState.running) { stopRain(); startRain(); }
+});
+function toggleAmbient(checkbox) {
+  rainState.enabled = checkbox.checked;
+  if (!rainState.enabled) stopRain();
+  else if (resolvedTheme() === 'dark') startRain();
+}
+
+/* ---------- 视图切换 ---------- */
+var VIEW_TITLES = { list: '今日', all: '全部日记', editor: '编辑器', stats: '统计', trash: '回收站', settings: '设置', lock: '锁定页', components: '组件总览' };
+function switchView(name) {
+  var views = document.querySelectorAll('.view');
+  views.forEach(function (v) { v.classList.remove('active'); });
+  var target = document.getElementById('view-' + name);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function (n) {
+    n.classList.toggle('active', n.getAttribute('data-view') === name);
+  });
+  var title = document.getElementById('topbarTitle');
+  if (title) title.textContent = VIEW_TITLES[name] || 'MyDiary';
+  document.getElementById('content').scrollTop = 0;
+}
+
+/* ---------- 弹窗 ---------- */
+var lastFocus = null;
+function openModal() {
+  lastFocus = document.activeElement;
+  var overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('open');
+  var first = overlay.querySelector('button');
+  if (first) first.focus();
+}
+function closeModal() {
+  var overlay = document.getElementById('modalOverlay');
+  overlay.classList.remove('open');
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+document.getElementById('modalOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay.classList.contains('open')) closeModal();
+  }
+});
+
+/* ---------- Toast ---------- */
+var TOAST_ICONS = { success: '✓', error: '✕', info: 'ⓘ' };
+function toast(type, msg) {
+  var host = document.getElementById('toastHost');
+  var el = document.createElement('div');
+  el.className = 'toast t-' + type;
+  el.setAttribute('role', 'status');
+  el.innerHTML = '<span class="t-ico" aria-hidden="true">' + (TOAST_ICONS[type] || 'ⓘ') + '</span><span></span>';
+  el.lastChild.textContent = msg;
+  host.appendChild(el);
+  var t = setTimeout(function () {
+    el.classList.add('out');
+    setTimeout(function () { el.remove(); }, 260);
+  }, 4000);
+  el.addEventListener('mouseenter', function () { clearTimeout(t); });
+}
+
+/* ---------- 初始化 ---------- */
+(function init() {
+  var saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+  userMode = (saved === 'light' || saved === 'dark' || saved === 'system') ? saved : 'system';
+  var t = document.documentElement.getAttribute('data-theme') || resolvedTheme();
+  applyTheme(t, false);
+  syncSettingsSeg(t);
+})();
+</script>
+</body>
+</html>

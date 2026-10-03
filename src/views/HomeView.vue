@@ -45,7 +45,7 @@
         >
           <div class="diary-card-inner">
             <div class="diary-title">{{ d.title || '无标题' }}</div>
-            <button class="diary-delete" @click.stop="deleteDiary(d)" title="删除到回收站">🗑</button>
+            <button class="diary-delete" @click.stop="requestDelete(d)" title="删除到回收站">🗑</button>
           </div>
           <div class="diary-preview">{{ getPreview(d) }}</div>
           <div class="diary-tags">
@@ -56,6 +56,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 删除确认对话框 -->
+    <Teleport to="body">
+      <div v-if="pendingDelete" class="modal-overlay" @click.self="pendingDelete = null">
+        <div class="modal">
+          <p>确定删除「{{ pendingDelete.title || '无标题' }}」吗？</p>
+          <p class="modal-hint">删除后可在回收站恢复</p>
+          <div class="modal-actions">
+            <button class="btn modal-cancel" @click="pendingDelete = null">取消</button>
+            <button class="btn modal-confirm" @click="confirmDelete">删除</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -71,6 +85,7 @@ const router = useRouter()
 
 const searchQuery = ref('')
 const activeTag = ref(null)
+const pendingDelete = ref(null)
 
 onMounted(async () => {
   await store.initLibrary()
@@ -118,10 +133,16 @@ function openDiary(d) {
   router.push(`/edit/${d.id}?date=${d.date}`)
 }
 
-function deleteDiary(d) {
-  if (confirm('确定删除「' + (d.title || '无标题') + '」吗？（删除后可在回收站恢复）')) {
-    store.deleteDiary(d.date, d.id).then(() => store.fetchDiaries())
-  }
+function requestDelete(d) {
+  pendingDelete.value = d
+}
+
+async function confirmDelete() {
+  const d = pendingDelete.value
+  pendingDelete.value = null
+  if (!d) return
+  await store.deleteDiary(d.date, d.id)
+  await store.fetchDiaries()
 }
 
 function setTag(tag) {
@@ -155,7 +176,7 @@ function setTag(tag) {
   font-size: 12px; padding: 4px 12px; border-radius: 14px; cursor: pointer;
   transition: all 0.15s;
 }
-.tag-filter:hover { border-color: var(--accent); color: var(--accent); }
+.tag-filter:hover { border-color: var(--accent); }
 .tag-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .loading, .empty-state { text-align: center; padding: 60px 0; opacity: 0.5; }
@@ -173,6 +194,9 @@ function setTag(tag) {
 .diary-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
 .diary-delete {
   background: transparent; border: none; cursor: pointer;
+  /* 必须显式指定颜色：<button> 不继承父级 color，会落到浏览器默认的纯黑，
+     在深色模式下就是黑图标画在近黑底上，完全看不见。 */
+  color: var(--fg);
   font-size: 14px; opacity: 0; transition: opacity 0.15s;
   padding: 2px 6px; border-radius: 6px;
 }
@@ -185,4 +209,27 @@ function setTag(tag) {
   font-size: 11px; padding: 2px 8px; border-radius: 10px; cursor: pointer;
 }
 .tag:hover { opacity: 0.8; }
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.modal {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; min-width: 320px; max-width: 420px;
+}
+.modal p { font-size: 15px; margin-bottom: 8px; }
+.modal-hint { font-size: 13px; opacity: 0.5; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-cancel {
+  background: transparent; border: 1px solid var(--border); color: var(--fg);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.modal-cancel:hover { opacity: 0.8; }
+.modal-confirm {
+  background: #e74c3c; border: none; color: #fff;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.modal-confirm:hover { opacity: 0.85; }
 </style>
