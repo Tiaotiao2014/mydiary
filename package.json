@@ -2,6 +2,7 @@
   "name": "mydiary",
   "version": "0.1.0",
   "description": "纯本地日记软件 - MyDiary",
+  "author": "Tiaotiao2014",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on tcp:5173 && node scripts/start.cjs --dev\"",

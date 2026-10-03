@@ -35,19 +35,19 @@ jobs:
       - name: Build Vite
         run: npm run build:vite
 
+      # 未配置签名证书时不要传 CSC_LINK：空字符串会被 electron-builder
+      # 当成证书路径，报 "not a file" 导致构建失败。
+      # 将来如需签名：先在仓库 Secrets 添加 CSC_LINK / CSC_KEY_PASSWORD，再补回 env。
       - name: Build Electron (Windows)
         if: matrix.os == 'windows-latest'
         run: npx electron-builder --win nsis
-        env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
       - name: Build Electron (macOS)
         if: matrix.os == 'macos-latest'
         run: npx electron-builder --mac dmg
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # 本仓库暂无签名证书，明确跳过签名身份自动发现
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Build Electron (Linux)
         if: matrix.os == 'ubuntu-latest'
