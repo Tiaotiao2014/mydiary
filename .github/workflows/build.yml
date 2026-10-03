@@ -5,6 +5,11 @@ on:
     branches: [main, develop]
   release:
     types: [published]
+  workflow_dispatch:
+
+# Release 附件上传需要写权限；默认 GITHUB_TOKEN 是只读的
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,11 +23,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
+      # 不要加 --no-optional：Vite 依赖的 Rollup 原生二进制是以
+      # optionalDependencies 形式分发的，禁用后构建会报
+      # "Cannot find module @rollup/rollup-<platform>"。
       - name: Install dependencies
-        run: npm install --no-optional
+        run: npm install --no-audit --no-fund
 
       - name: Build Vite
         run: npm run build:vite
@@ -50,3 +58,18 @@ jobs:
         with:
           name: mydiary-${{ matrix.os }}
           path: dist_electron/
+
+      # 只有发布 Release 时，才把安装包挂到 Release 页面供公开下载
+      - name: Attach installers to Release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          files=(dist_electron/*.exe dist_electron/*.dmg dist_electron/*.AppImage)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::warning::未找到安装包，跳过上传"
+            exit 0
+          fi
+          gh release upload "${{ github.event.release.tag_name }}" "${files[@]}" --clobber
